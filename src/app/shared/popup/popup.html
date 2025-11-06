@@ -1,0 +1,59 @@
+@if(config.isShowPopup) {
+<div class="fixed inset-0 z-50 w-dvw h-dvh flex items-center justify-center">
+  <div
+    class="relative flex flex-col z-50 bg-white rounded-lg shadow-lg overflow-hidden w-full h-fit max-h-[calc(100dvh-40px)]"
+    [ngClass]="{
+      'max-w-sm': config.popupFor == 'small',
+      'max-w-xl': config.popupFor == 'medium',
+      'max-w-4xl': config.popupFor == 'large',
+      'max-w-full': config.popupFor == 'fullWidth'
+    }"
+  >
+    <header class="relative flex items-center bg-primary-500 px-5 py-2.5">
+      @if(config.isShowHeaderText) {
+        <h3
+            class="text-xl font-semibold truncate pr-12 text-primary-50"
+            [title]="config.headerText"
+        >
+            {{ config.headerText }}
+        </h3>
+      } 
+      @if(config.isCrossIcon) {
+        <div class="ml-auto">
+            <button
+            id="btnClose"
+            (click)="closePopup()"
+            class="grow-0 shrink-0 basis-auto w-5 h-5 flex items-center justify-center tooltip text-primary-50 cursor-pointer"
+            data-tooltip="Close"
+            >
+            ✕
+            </button>
+        </div>
+      }
+    </header>
+    <section class="p-4 h-full overflow-x-hidden overflow-y-auto">
+      <ng-content></ng-content>
+    </section>
+    @if (config.buttons.length) {
+      <footer class="flex items-center">
+        @for (btn of config.buttons; track $index) {
+          @if (btn.isVisible !== false) {
+            <button
+              type="{{ btn.action === 'submit' ? 'submit' : 'button' }}"
+              (click)="onButtonClick(btn)"
+              [disabled]="btn.disabled"
+              class="grow shrink-0 basis-[0%] w-full max-w-full px-4 py-4 cursor-pointer text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+              [ngClass]="btn.cssClass"
+            >
+            {{ btn.label }}
+            </button>
+          }
+        }
+      </footer>
+    }
+  </div>
+  <div
+    class="absolute inset-0 w-full h-full z-10 bg-[linear-gradient(135deg,_rgba(68,76,231,0.1)_0%,_rgba(132,155,255,0.1)_100%)] backdrop-blur-md"
+  ></div>
+</div>
+}

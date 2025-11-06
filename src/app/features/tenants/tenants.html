@@ -1,0 +1,87 @@
+<div class="page-container">
+  <!-- Header Section -->
+  <header class="page-header">
+    <div>
+      <h1 class="heading-txt">Tenant Management</h1>
+      <p class="content-text">Manage organizational tenants and their resources</p>
+    </div>
+    <div class="ml-auto" *ngIf="permissions.canAddTenant">
+      <button 
+        (click)="openAddTenantPopup()" 
+        class="btn-primary group">
+        <span class="w-[1em] h-[1em]">
+          <svg class="w-full h-full group-hover:animate-pump" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <g id="Edit / Add_Plus">
+            <path id="Vector" d="M6 12H12M12 12H18M12 12V18M12 12V6" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+          </svg>
+        </span>
+        <span>Add Tenant</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Tenant Cards Grid -->
+  <section class="page-content">
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4">
+      @for (tenant of tenantData; track tenant.tenantId) {
+        <div class="grid gap-4 bg-white rounded-xl p-6 border border-primary-300/50 shadow-md">
+          <h2 class="text-lg font-bold text-primary-500">{{ tenant.tenantName }}</h2>
+
+          <div class="grid md:grid-cols-3 gap-1 text-center">
+            <div>
+              <div class="text-sm text-primary-900/85">Users</div>
+              <div class="text-lg text-primary-500 font-semibold">{{ tenant.userCount }}</div>
+            </div>
+            <div>
+              <div class="text-sm text-primary-900/85">Courses</div>
+              <div class="text-lg text-primary-500 font-semiboldl">{{ tenant.courseCount }}</div>
+            </div>
+            <div>
+              <div class="text-sm text-primary-900/85">Assessments</div>
+              <div class="text-lg text-primary-500 font-semibold">{{ tenant.assessmentCount }}</div>
+            </div>
+          </div>
+
+          <button 
+            (click)="openTenantManagePopup(tenant.tenantId, tenant.tenantName)" 
+            class="btn-primary">
+            Manage
+          </button>
+        </div>
+      }
+    </div>
+  </section>
+</div>
+
+<!-- Popup Section -->
+<app-popup 
+  #popup 
+  [config]="popupConfig" 
+  (closeEvent)="closePopup()"
+  (buttonClick)="handlePopupAction($event)">
+
+  @if (popupConfig.popupFunctionalityType === 'add') {
+    <app-add-tenants
+     #addTenants
+      (formReady)="onTenantFormReady($event)"
+      (tenantAdded)="handleTenantAdded()"
+      (close)="closePopup()"
+    ></app-add-tenants>
+  }
+
+  @if (popupConfig.popupFunctionalityType === 'delete') {
+    <app-delete-tenants 
+      #deleteTenants
+      add-tenants 
+      (close)="closePopup()"></app-delete-tenants>
+  }
+
+  @if (popupConfig.popupFunctionalityType === 'manage' && selectedTenantId) {
+    <app-tenant-manage 
+      #manageTenants
+      [tenantId]="selectedTenantId" 
+      (close)="closePopup()"></app-tenant-manage>
+  }
+
+</app-popup>

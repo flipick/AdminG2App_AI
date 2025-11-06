@@ -1,0 +1,112 @@
+    @if (courseType == 'scorm') {
+        <div>
+            <h2 class="text-sm font-semibold text-gray-800 mb-4">SCORM Package Upload</h2>
+
+            <input type="file" #fileInput (change)="onFileSelected($event)" accept=".zip" hidden />
+            <div (click)="fileInput.click()" (dragover)="onDragOver($event)" (drop)="onDrop($event)"
+                (dragleave)="onDragLeave($event)"
+                class="flex flex-col items-center justify-center border-2 border-dashed border-blue-300 rounded-lg h-48 bg-blue-50 hover:bg-blue-100 transition cursor-pointer text-center"
+                [class.bg-blue-200]="isDragging">
+                <img src="https://img.icons8.com/fluency/48/folder-invoices.png" class="mb-2 w-12 h-12" />
+                <p class="text-gray-700">
+                    Drag and drop your SCORM package here or
+                    <span class="text-blue-600 underline">click to browse</span>
+                </p>
+            </div>
+            @if (selectedFile) {
+            <div class="mt-4 text-sm text-gray-800">
+                <strong>Selected File:</strong> {{ selectedFile.name }}
+            </div>
+            }
+
+            <div class="mt-4 flex justify-end items-center">
+                <button (click)="uploadScorm()" class="btn-primary">
+                    Next
+                </button>
+            </div>
+        </div>
+    } @else if (courseType == 'url') {
+        @if (ContentForm) {
+            <form [formGroup]="ContentForm">
+                <div>
+                    <div class="relative">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            URL <span class="text-red-500">*</span>
+                        </label>
+                        <input formControlName="courseTypeUrl" type="text" class="form-input" placeholder="Enter course URL">
+
+                        @if (submitted && f['courseTypeUrl'].errors) {
+                        <div class="text-red-500 text-sm mt-1">
+                            @if (f['courseTypeUrl'].errors['required']) {
+                            <p>Please enter a URL.</p>
+                            }
+                            @if (f['courseTypeUrl'].errors && f['courseTypeUrl'].errors['pattern']) {
+                            <p>Please enter a valid URL format.</p>
+                            }
+                        </div>
+                        }
+                    </div>
+
+                    <div class="mt-4 flex justify-end items-center">
+                        <button (click)="saveUrl()" class="btn-primary">
+                            Next
+                        </button>
+                    </div>
+                </div>
+            </form>
+        }
+    }
+
+    @else if (courseType == 'pdf') {
+        <div>
+            <div class="relative">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Upload PDF <span class="text-red-500">*</span>
+                </label>
+
+                <input type="file" #pdfInput (change)="onPdfSelected($event)" accept="application/pdf"
+                    class="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+
+                @if (submitted && !selectedFile) {
+                <div class="text-red-500 text-sm mt-1">
+                    <p>Please upload a PDF file.</p>
+                </div>
+                }
+            </div>
+            <div class="flex items-center">
+                @if (selectedFile) {
+                    <div class="text-sm text-gray-800">
+                        <strong>Selected File:</strong> {{ selectedFile.name }}
+                    </div>
+                }
+                <div class="ml-auto">
+                    <button (click)="uploadPdf()" class="btn-primary">
+                        Next
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="mt-4 pt-4 flex items-center border-t border-gray-300">
+        @if (course && course.courseTypeUrl != null && course.courseTypeUrl != '') {
+            @if (courseType == 'pdf') {
+                <p>File Name: {{ getFileNameFromUrl(course.courseTypeUrl) }}</p>
+            }
+        }
+
+        <div class="ml-auto">
+            <button (click)="openPreview(course.courseTypeUrl)"
+                class="btn btn-primary">
+                Preview 
+            </button>
+        </div>
+    </div>
+
+
+<!-- Delete Popup -->
+<app-popup [config]="popupConfig" (closeEvent)="closePopup()">
+    <ng-container>
+        <app-preview-course #preview [previewurl]="selectedPreviewUrl" (close)="closePopup()"></app-preview-course>
+    </ng-container>
+</app-popup>

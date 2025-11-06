@@ -1,0 +1,43 @@
+<div class="page-container">
+    <header class="page-header">
+        <div>
+            <h1 class="text-2xl font-bold text-indigo-700">Question Bank Management</h1>
+        </div>
+        <div class="ml-auto">
+            <button type="button" (click)="goBackToList()" class="btn-outline group">
+                <span class="w-[1.5em]">
+                    <svg class="w-full h-full group-hover:animate-arrow-left" viewBox="0 0 24 24" fill="none"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <path d="M6 12H18M6 12L11 7M6 12L11 17" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                </span>
+                <span>Back to List</span>
+            </button>
+        </div>
+    </header>
+    <section class="page-content">
+        <div class="grid lg:grid-cols-2 2xl:grid-cols-3 gap-4">
+            @for (question of questions; track $index) {
+            <div class="group grid gap-4 bg-white rounded-xl p-6 border border-primary-300/50 shadow-md">
+                <h3 class="text-lg font-semibold text-gray-800">
+                    {{ question.questionText }}
+                </h3>
+                
+
+                <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-1">
+                        <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium border bg-gray-50 text-gray-600 border-gray-400"> {{ question.status === 1 ? 'Approve' : 'Draft' }}</span>
+                    </div>
+                    <div class="ml-auto flex items-center gap-2">
+                        <button (click)="toggleStatus(question)"
+                            class="btn-outline">
+                        {{ question.status === 1 ? 'Draft' : 'Approve' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+            }
+        </div>
+    </section>
+</div>

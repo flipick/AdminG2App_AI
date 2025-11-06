@@ -1,0 +1,36 @@
+<div class=" grid gap-4">
+    <h2 class="text-lg font-semibold text-primary-500">Select Department(s)</h2>
+    <div class="grid gap-2">
+        @for (dept of departments; track dept.departmentId) {
+            <label class="grid grid-cols-[auto_1fr] items-center gap-2 border border-gray-300 rounded-lg p-2 has-checked:bg-primary-100 has-checked:ring-primary-500 has-checked:border-primary-500 cursor-pointer">
+                <input type="checkbox"
+                        class="w-4 h-4 accent-primary-500 cursor-pointer"
+                        [value]="dept.departmentId"
+                        (change)="toggleDepartmentSelection(dept.departmentId, $event)" />
+                <span class="text-gray-700">{{ dept.departmentName }}</span>
+            </label>
+        }
+    </div>
+
+    <div class="flex items-center gap-4">
+        <div class="flex items-center">
+            @if(submitted && errorMessage != '') {
+                <div class="text-sm valid-feedback text-red-700">
+                    {{ errorMessage }}
+                </div>
+            }
+            @if(submitted && successMessage != '') {
+                <div class="text-sm valid-feedback text-green-700">
+                    {{ successMessage }}
+                </div>
+            }
+        </div>
+        <!-- <div class="ml-auto">
+            <button type="button"
+                    (click)="assignCourse()"
+                    class="btn-primary disabled:opacity-50 disabled:cursor-not-allowed">
+                Assign Course
+            </button>
+        </div> -->
+    </div>
+</div>

@@ -1,0 +1,29 @@
+<div class="grid gap-4">
+    <div class="grid gap-4">
+        @for(question of questions; track i; let i = $index){
+        <div class="card grid gap-4">
+            <!-- Question Text -->
+            <p class="font-semibold text-gray-800">Q{{ i + 1 }}: {{ question.questionText }}</p>
+
+            <!-- Options List -->
+            <ul class="grid gap-2 list-none list-inside text-gray-700">
+                <li class="form-input cursor-default">A: {{ question.a }}</li>
+                <li class="form-input cursor-default">B: {{ question.b }}</li>
+                <li class="form-input cursor-default">C: {{ question.c }}</li>
+                <li class="form-input cursor-default">D: {{ question.d }}</li>
+            </ul>
+
+            <!-- Correct Answer Display -->
+            <p class="text-green-700 font-medium">
+                <span>Answer:</span><strong> {{ question.answer }} </strong>
+            </p>
+
+            @if(question.solution != null && question.solution != ''){
+                <p class=" text-gray-600 italic border border-primary-500 bg-primary-50 rounded-md py-2 px-3">
+                    <strong>Solution:</strong> {{ question.solution }}
+                </p>
+            }
+        </div>
+        }
+    </div>
+</div>

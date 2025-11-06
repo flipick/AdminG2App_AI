@@ -1,0 +1,81 @@
+<form [formGroup]="contentBuilderForm" (ngSubmit)="saveAdaptiveAssessments()" class="space-y-6">
+
+  <div class="grid gap-4">
+    <div>
+      <label class="form-label">Select Question Bank:</label>
+      <select formControlName="questionBankId" (change)="onQuestionBankChange($event)"
+              class="form-select w-auto min-w-xs">
+        <option value="">Select Question Bank</option>
+        <option *ngFor="let qb of questionBanks" [value]="qb.questionBankId">
+          {{ qb.title }}
+        </option>
+      </select>
+      <input type="hidden" formControlName="assessmentId" />
+    </div>
+
+    <div formArrayName="adaptiveAssessments" class="grid gap-4">
+      <div 
+        *ngFor="let assessment of adaptiveAssessments.controls; let i = index" [formGroupName]="i"
+        class="card flex gap-4">
+
+        <div>
+          <label class="form-label">Difficulty Level</label>
+          <div class="flex items-center space-x-1">
+            <ng-container *ngFor="let star of starsArray; let i = index">
+              <svg
+                class="w-5 h-5"
+                [ngClass]="{
+                  'text-primary-500': i < assessment.value.difficultyLevel,
+                  'text-gray-300': i >= assessment.value.difficultyLevel
+                }"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.975a1 1 0 00.95.69h4.178c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.286 3.974c.3.921-.755 1.688-1.54 1.118l-3.38-2.455a1 1 0 00-1.175 0l-3.38 2.455c-.784.57-1.838-.197-1.539-1.118l1.285-3.974a1 1 0 00-.364-1.118L2.047 9.402c-.783-.57-.38-1.81.588-1.81h4.178a1 1 0 00.95-.69l1.286-3.975z" />
+              </svg>
+            </ng-container>
+        </div>
+        </div>
+
+        <div class="ml-auto">
+          <label class="form-label">Correct Answer Marks</label>
+          <input type="number" formControlName="correctAnswerMarks"
+                 class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500" />
+
+          <div *ngIf="submitted && assessment.get('correctAnswerMarks')?.invalid"
+               class="text-red-600 text-sm mt-1">
+            Correct Answer Marks is required.
+          </div>
+        </div>
+
+        <!-- isSelected checkbox is hidden as requested -->
+      </div>
+    </div>
+
+    <div class="flex items-center">
+      <div>
+        @if(successMessage) {
+          <p class="text-green-600 text-sm">
+            {{ successMessage }}
+          </p>
+        }
+        @if(errorMessage) {
+          <p class="text-red-600 text-sm">
+            {{ errorMessage }}
+          </p>
+        }
+      </div>
+      <div class="ml-auto">
+        <button 
+          type="submit"
+          class="btn-primary">
+          Save
+        </button>
+      </div>
+    </div>
+
+    
+  </div>
+
+</form>

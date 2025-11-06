@@ -1,0 +1,117 @@
+<section *ngIf="showSection">
+<!-- Dropdown Row -->
+<div class="flex flex-wrap items-end gap-4 bg-white p-4 rounded-lg shadow-sm" >
+  
+  <!-- Tenant Dropdown -->
+  @if (permissions.showTenantDropdown) {
+    <div class="grow shrink-0 basis-[0%] w-full max-w-full">
+      <label class="form-label">Tenant</label>
+      <select class="form-select" [(ngModel)]="selectedTenantId" (change)="filterByTenant(selectedTenantId)">
+        <option [value]="">Select Tenant</option>
+        @for (tenant of tenantlist; track $index) {
+          <option [value]="tenant.tenantId">
+            {{ tenant.tenantName }}
+          </option>
+        }
+      </select>
+    </div>
+  }
+
+  <!-- Learner Dropdown -->
+  @if (learners.length > 0) {
+    <div class="grow shrink-0 basis-[0%] w-full max-w-full">
+      <label class="form-label">Employee </label>
+      <select class="form-select" [(ngModel)]="selectedLearnerId" (change)="filterByLearner(selectedLearnerId)">
+        <option [value]="-1">Select Employee</option>
+        @for (learner of learners; track learner.learnerId) {
+          <option [value]="learner.learnerId">
+            {{ learner.firstName }} {{ learner.lastName }}
+          </option>
+        }
+      </select>
+    </div>
+  }
+
+  <!-- Apply Button -->
+  <div>
+    <button (click)="onApplyFilter()" class="btn-outline w-full lg:w-auto">
+      Apply
+    </button>
+  </div>
+
+</div>
+
+<!-- File Upload & Evaluate -->
+<form [formGroup]="chatbotForm" (ngSubmit)="query()">
+  <div class="w-full flex justify-center">
+    <div class="w-full max-w-2xl">
+      <div class="bg-white rounded-xl shadow-md border border-gray-300 p-6">
+        <h3 class="text-lg font-semibold mb-4">Choose a PDF File</h3>
+
+        <!-- File Upload and Button -->
+        <div class="flex flex-wrap items-center gap-4">
+          <!-- File Input -->
+          <div class="flex-grow">
+            <label class="block">
+              <input
+                type="file"
+                accept=".pdf"
+                (change)="onFileSelected($event)"
+                class="mt-2 block w-full text-sm text-[#682875]
+                  file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0
+                  file:text-sm file:font-semibold file:bg-[#F2F3F7] file:text-[#0199d6]
+                  file:cursor-pointer hover:file:text-white hover:file:bg-[#0199d6] cursor-pointer"
+              />
+            </label>
+            <p class="text-red-500 text-sm mt-1" *ngIf="errorMessage">
+              {{ errorMessage }}
+            </p>
+          </div>
+
+          <!-- Evaluate Button -->
+          <button
+            type="submit"
+            class="text-sm font-bold text-white rounded-md bg-[#682875]
+              border border-transparent px-5 py-2 transition-all hover:opacity-90"
+          >
+            Evaluate
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+
+<!-- Chat List (2 Boxes per Row) -->
+<div class="w-full max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-6 py-6">
+  <div
+    *ngFor="let item of chatList; let i = index"
+    class="bg-white border rounded-lg p-4 shadow-sm flex flex-col justify-between"
+  >
+    <!-- Chat Preview -->
+    <div class="text-gray-700 text-sm line-clamp-4">
+      <div [innerHTML]="sanitizeHtml(getPreview(item.promptReceived))"></div>
+    </div>
+
+    <!-- View More -->
+    <div class="mt-4 text-right">
+      <button
+        class="text-blue-600 text-sm font-medium hover:underline"
+        (click)="openChatPopup(item.promptReceived)">
+        View More
+      </button>
+    </div>
+  </div>
+</div>
+</section>
+<!-- Chat Popup -->
+<app-popup 
+  [config]="popupConfig" 
+  (closeEvent)="closePopup()"
+  (buttonClick)="handlePopupAction($event)">
+  <ng-container>
+    @if (popupConfig.popupFunctionalityType === 'chat-detail') {
+      
+    }
+  </ng-container>
+</app-popup>

@@ -1,0 +1,54 @@
+<!-- Header -->
+<div class="bg-indigo-100 p-6 mb-6 rounded-lg shadow-sm border border-indigo-200">
+  <div class="flex justify-between items-center">
+    <!-- Left Side: Title & Subtitle -->
+    <div>
+      <h1 class="text-2xl font-bold text-indigo-700">Edit Skills</h1>
+    </div>
+    <div class="ml-auto">
+        <button 
+            type="button"
+            (click)="goBackToList()"
+            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg hover:border-indigo-500 hover:text-indigo-500 focus:text-indigo-500 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-4 cursor-pointer"> ← Back to Skills </button>
+    </div>
+  </div>
+</div>
+
+<section class="grid gap-6">
+    <div class="flex items-center bg-white p-4 rounded-lg shadow-sm">
+        <ul class="flex flex-wrap gap-8">
+            <li><strong>Tenant</strong>: <span>All</span></li>
+            <li><strong>Sector</strong>: <span>All</span></li>
+            <li><strong>Track</strong>: <span>All</span></li>
+        </ul>
+    </div>
+    <div class="grid gap-2 rounded-lg bg-white border border-gray-100 shadow-sm">
+        <div class="border-b border-gray-200 px-4 pt-4 pb-2">
+            <h4 class="text-sm font-semibold">Key Tasks of the New Role</h4>
+        </div>
+        <div class="px-4 pt-2 pb-4">
+
+        </div>
+    </div>
+
+    <div class="grid gap-2 rounded-lg bg-white border border-gray-100 shadow-sm">
+        <div class="border-b border-gray-200 px-4 pt-4 pb-2">
+            <h4 class="text-sm font-semibold">Key Tasks of the New Role</h4>
+        </div>
+        <div class="px-4 pt-2 pb-4">
+
+        </div>
+    </div>
+
+    <div class="grid gap-2 rounded-lg bg-white border border-gray-100 shadow-sm">
+        <div class="grid grid-cols-[1fr_30px] border-b border-gray-200 px-4 pt-4 pb-2">
+            <h4 class="text-sm font-semibold">Skill Gaps (Core Skills)</h4>
+            <button class="flex justify-center items-center w-7 h-7 bg-indigo-500 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition-all cursor-pointer" title="Edit">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4"><path fill-rule="evenodd" clip-rule="evenodd" d="m3.99 16.854-1.314 3.504a.75.75 0 0 0 .966.965l3.503-1.314a3 3 0 0 0 1.068-.687L18.36 9.175s-.354-1.061-1.414-2.122c-1.06-1.06-2.122-1.414-2.122-1.414L4.677 15.786a3 3 0 0 0-.687 1.068zm12.249-12.63 1.383-1.383c.248-.248.579-.406.925-.348.487.08 1.232.322 1.934 1.025.703.703.945 1.447 1.025 1.934.058.346-.1.677-.348.925L19.774 7.76s-.353-1.06-1.414-2.12c-1.06-1.062-2.121-1.415-2.121-1.415z" fill="#fff"></path></svg>
+            </button>
+        </div>
+        <div class="px-4 pt-2 pb-4">
+
+        </div>
+    </div>
+</section>

@@ -1,0 +1,237 @@
+<div class="page-container">
+    <!-- Header -->
+    <header class="page-header">
+         <!-- Left Side: Title & Subtitle -->
+        <div>
+            <h1 class="heading-txt">Talent Evaluation</h1>
+            <p class="content-text">Assess and evaluate employee performance</p>
+        </div>
+        <!-- Right Side: Back Button -->
+        <div class="ml-auto">
+        </div>
+    </header>
+
+    <section class="page-content">
+        <!-- Filters -->
+        <div class="flex flex-wrap items-centar gap-4 bg-white p-4 rounded-lg shadow-sm">
+
+            <!-- Tenant Dropdown -->
+            <div class="grow shrink-0 basis-[0%] w-full max-w-full">
+                <label for="tenant" class="form-label">Tenant</label>
+                <select id="tenant" [disabled]="!permissions.showTenantDropdown"
+                    class="form-select w-full"
+                    [(ngModel)]="selectedTenantId" (change)="onTenantChange($event)">
+                    <option value="" disabled>Select Tenant</option>
+                    @for (tenant of tenantlist; track tenant.tenantId) {
+                    <option [value]="tenant.tenantId">
+                        {{ tenant.tenantName }}
+                    </option>
+                    }
+                </select>
+
+                <!-- Reserve space whether error is shown or not -->
+                @if(showErrors && !selectedTenantId) {
+                    <p class="text-red-500 text-sm my-1">
+                        Please select a tenant.
+                    </p>
+                }
+                
+            </div>
+
+            <!-- Employee Dropdown -->
+            <div class="grow shrink-0 basis-[0%] w-full max-w-full">
+                <label for="employee" class="form-label">Employee</label>
+                <select id="employee"
+                    class="form-select w-full"
+                    [(ngModel)]="selectedLearnerId" (change)="onLearnerChange($event)">
+                    <option value="" disabled>Select Employee</option>
+                    @for (learner of learners; track learner.learnerId) {
+                    <option [value]="learner.learnerId">
+                        {{ learner.firstName }} {{ learner.lastName }}
+                    </option>
+                    }
+                </select>
+
+                <!-- Reserve space whether error is shown or not -->
+                @if(showErrors && !selectedLearnerId) {
+                    <p class="text-red-500 text-sm">
+                        Please select an employee.
+                    </p>
+                }
+            </div>
+
+            <!-- Apply Button -->
+            <div class="pt-6">
+                <button (click)="onApplyFilter()"
+                    class="btn-outline w-full lg:w-auto">
+                    Apply
+                </button>
+            </div>
+
+        </div>
+    
+
+        <!-- Grouped Key Tasks -->
+        @if(groupedKeyData.length > 0) {
+            <section class="grid gap-4">
+                <div class="space-y-4">
+                    @for (taskGroup of groupedKeyData; track taskGroup) {
+                    <div class="space-y-4 bg-white rounded-lg shadow p-4">
+                        <!-- Header -->
+                        <div class="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-gray-200 pb-3">
+                            <!-- Editable Title -->
+                            <h3 class="font-semibold text-gray-800">
+                                <span [attr.oldValue]="taskGroup.criticalWorkFunction"
+                                    [attr.contenteditable]="taskGroup.isEditing ? 'true' : null"
+                                    class="py-1 rounded w-full text-gray-800" (blur)="onCwfChange(taskGroup, $event)">
+                                    {{ taskGroup.criticalWorkFunction }}
+                                </span>
+                            </h3>
+
+                            <button class="btn-outline btn-sm" (click)="toggleEdit(taskGroup)">
+                                {{ taskGroup.isEditing ? 'Update' : 'Edit' }}
+                            </button>
+                        </div>
+
+                        <ul class="grid gap-2">
+                            @for (task of taskGroup.tasks; track task; let i = $index) {
+                            <li class="grid grid-cols-[1fr_auto] gap-2 items-center bg-white rounded-lg">
+                                <span [attr.contenteditable]="taskGroup.isEditing ? 'true' : null"
+                                    (blur)="onKeyTaskEdit(task, $event)" [attr.oldValue]="task.keyTaskSkill" class="block">
+                                    {{ task.keyTaskSkill }}
+                                </span>
+
+                                <!-- @if (task.isNew) {
+                                <button class="btn-outline border-red-300 text-red-500 hover:bg-red-500 hover:text-white"
+                                    (click)="removeTask(taskGroup, i)"> Remove
+                                </button>
+                                } -->
+
+                                <!-- Delete visible when editing -->
+                                @if (taskGroup.isEditing) {
+                                <button class="btn-outline btn-sm border-red-300 text-red-500 hover:bg-red-500 hover:text-white"
+                                        (click)="removeTask(taskGroup, i)">
+                                    Remove
+                                </button>
+                                }
+                            </li>
+                            }
+                        </ul>
+
+                        @if (taskGroup.isEditing) {
+                        <div>
+                            <button class="btn-outline" (click)="addTask(taskGroup)">Add Key Task</button>
+                        </div>
+                        }
+                    </div>
+                    }
+                </div>
+
+                <!-- Core Skills -->
+                @if (coreSkills.length > 0) {
+                <div class="grid gap-2 bg-white p-4 rounded-lg shadow-sm">
+                    <div class="flex justify-between items-center border-b border-gray-300 pb-2">
+                        <h3 class="text-lg font-bold text-gray-700">Skill Gaps (Core Skills)</h3>
+                        <button class="btn-outline btn-sm" (click)="toggleCoreEdit()">
+                            {{ isCoreEditing ? 'Update' : 'Edit' }}
+                        </button>
+                    </div>
+
+                    <div class="grid gap-2">
+                        @for (skill of coreSkills; track skill) {
+                        <div class="grid grid-cols-[1fr_150px_auto] gap-2 items-center bg-white rounded-lg">
+
+                            <!-- Editable Core Skill -->
+                            <span [attr.contenteditable]="isCoreEditing ? 'true' : null" [attr.oldValue]="skill.oldValue"
+                                class="block" (blur)="onCoreSkillChange(skill, $event); skill.isEdited = true;">
+                                {{ skill.coreSkill }}
+                            </span>
+
+                            @if (isCoreEditing) {
+                            <select [(ngModel)]="skill.proficiencyLevel" class="form-select py-1"
+                                (change)="onCoreProficiencyChange(skill)">
+                                @for (level of [1,2,3,4,5]; track level) {
+                                <option [value]="level">Level {{ level }}</option>
+                                }
+                            </select>
+                            }
+
+                        <!-- ✅ Delete button shows for both new and existing -->
+                            @if (isCoreEditing) {
+                            <button
+                                class="btn-outline btn-sm border-red-300 text-red-500 hover:bg-red-500 hover:text-white"
+                                (click)="removeCoreSkill(skill)"
+                            >
+                                Remove
+                            </button>
+                            }
+                        </div>
+                        }
+
+                        <!-- Add Skill Button -->
+                        @if (isCoreEditing) {
+                        <div>
+                            <button class="btn-outline" (click)="addCoreSkill()">
+                                Add Core Skill
+                            </button>
+                        </div>
+                        }
+                    </div>
+                </div>
+                }
+
+                <!-- TDC Skills -->
+                @if (tdcSkills.length > 0) {
+                <div class="grid gap-2 bg-white p-4 rounded-lg shadow-sm">
+                    <div class="flex justify-between items-center border-b border-gray-300 pb-2">
+                        <h3 class="text-lg font-bold text-gray-700">Skill Gaps (Technical & Domain Competency)</h3>
+                        <button class="btn-outline btn-sm" (click)="toggleTdcEdit()">
+                            {{ isTdcEditing ? 'Update' : 'Edit' }}
+                        </button>
+                    </div>
+
+                    <div class="grid gap-2">
+                        @for (skill of tdcSkills; track skill.tdcSkill) {
+                        <div class="grid grid-cols-[1fr_150px_auto] gap-2 items-center bg-white rounded-lg">
+
+                            <span [attr.contenteditable]="isTdcEditing ? 'true' : null" [attr.oldValue]="skill.oldValue"
+                                class="block" (blur)="onTdcSkillChange(skill, $event);skill.isEdited = true;">
+                                {{ skill.tdcSkill }}
+                            </span>
+
+                            @if (isTdcEditing) {
+                            <select [(ngModel)]="skill.tdcProficiencyLevel" class="form-select py-1"
+                                (change)="onTdcProficiencyChange(skill)">
+                                @for (level of ['Basic', 'Intermediate', 'Advanced']; track level) {
+                                <option [value]="level" [selected]="level === 'Basic'">
+                                    {{ level }}
+                                </option>
+                                }
+                            </select>
+                            }
+                            <!-- ✅ Delete button for both new and existing -->
+                            @if (isTdcEditing) {
+                            <button
+                                class="btn-outline btn-sm border-red-300 text-red-500 hover:bg-red-500 hover:text-white"
+                                (click)="removeTdcSkill(skill)">
+                                Remove
+                            </button>
+                            }
+                        </div>
+                        }
+
+                        <!-- Add Skill Button -->
+                        @if (isTdcEditing) {
+                        <div>
+                            <button class="btn-outline" (click)="addTdcSkill()">  Add Technical Skill
+                            </button>
+                        </div>
+                        }
+                    </div>
+                </div>
+                }
+                <div> <button type="btn-primary" (click)="onSubmitKeyTaskChanges()" class="btn-primary">SAVE</button> </div>
+            </section>
+        }
+    </section>
+</div>

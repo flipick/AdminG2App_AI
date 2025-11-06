@@ -1,0 +1,12 @@
+/* add-sector-track-role.css */
+input.form-input {
+  @apply border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-1 focus:ring-primary-500 w-full;
+}
+
+button.btn-primary {
+  @apply bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600;
+}
+
+button.btn-outline {
+  @apply border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-100;
+}

@@ -1,0 +1,59 @@
+<div>
+  <!-- Upload PDF -->
+  <div class="relative" [ngClass]="{ 'opacity-50 pointer-events-none': questions.length > 0 }">
+    <label class="block text-sm font-medium text-gray-700 mb-2">
+      Upload PDF <span class="text-red-500">*</span>
+    </label>
+
+    <input type="file" #pdfInput (change)="onPdfSelected($event)" accept="application/pdf"
+      class="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0
+             file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+
+    <!-- @if (submitted && !selectedFile) {
+      <p class="text-red-500 text-sm mt-1">Please upload a PDF file.</p>
+    } -->
+  
+
+  <!-- Show selected file -->
+  @if (selectedFile) {
+    <div class="mt-4 text-sm text-gray-800">
+      <strong>Selected File:</strong> {{ selectedFile.name }}
+    </div>
+  }
+
+  <!-- Success & Error -->
+  <div class="mt-4">
+    <p class="text-green-700" *ngIf="successMessage">{{ successMessage }}</p>
+    <p class="text-red-700" *ngIf="errorMessage">{{ errorMessage }}</p>
+  </div>
+
+  <div class="flex mt-4">
+    <button type="button" class="btn-primary" (click)="createAIAssessmentAgentAndQuestions()">Upload & Generate</button>
+  </div>
+</div>
+<form [formGroup]="rolePlayScenarioForm">
+  <!-- Questions Form -->
+  @if (questions.length > 0) {
+  <div class="mt-6">
+    <h3 class="text-base font-semibold mb-2">Questions</h3>
+  
+    <!-- 👇 Wrap your loop in formArrayName="questions" -->
+    <div formArrayName="questions" class="grid gap-2">
+      @for (q of questions.controls; track i; let i = $index) {
+      <div [formGroupName]="i" class="grid grid-cols-[1fr_auto] gap-2">
+        <input type="text" formControlName="question" class="form-input" />
+        <button type="button" class="btn-outline hidden" (click)="removeQuestion(i)">Remove</button>
+      </div>
+      }
+    </div>
+  </div>
+  
+  <div class="flex justify-end mt-4">
+    <button type="button" class="btn-primary" (click)="saveQuestions()" [disabled]="questions.length == 0">
+      Save Changes
+    </button>
+  </div>
+  }
+</form>
+
+</div>

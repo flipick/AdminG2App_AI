@@ -1,0 +1,146 @@
+<div>
+  <!-- Header -->
+  <header class="page-header flex items-center">
+    <!-- Left Side: Title & Subtitle -->
+    <div>
+      <h1 class="heading-txt">Department List</h1>
+      <p class="content-text">Create and manage Department</p>
+    </div>
+
+    <!-- Right Side: Add Button -->
+    <div class="ml-auto">
+      <button
+        type="button"
+        (click)="openAddDepartmentPopup()"
+        class="btn-primary group flex items-center gap-2"
+      >
+        <span class="w-[1em] h-[1em]">
+          <svg
+            class="w-full h-full group-hover:animate-pump"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <g id="Edit / Add_Plus">
+              <path
+                id="Vector"
+                d="M6 12H12M12 12H18M12 12V18M12 12V6"
+                stroke="currentColor"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </g>
+          </svg>
+        </span>
+        <span>Add Department</span>
+      </button>
+    </div>
+  </header>
+</div>
+
+<section class="page-content mt-4">
+  <!-- Tenant Dropdown (if permission allows) -->
+  <div *ngIf="permissions.showTenantDropdown" class="flex items-center card mb-4">
+    <div class="flex items-end gap-4">
+      <div class="min-w-40">
+        <label class="block mb-2 text-sm text-gray-900">Tenant</label>
+        <select
+          class="form-select"
+          [(ngModel)]="selectedTenantId"
+          (change)="filterByTenant($event)"
+        >
+          <option *ngFor="let tenant of tenantlist" [value]="tenant.tenantId">
+            {{ tenant.tenantName }}
+          </option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Departments List -->
+  <div *ngIf="departments.length > 0; else noDepartments">
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
+      <div
+        *ngFor="let dept of departments; index as i"
+        class="group card grid relative overflow-hidden border border-transparent has-checked:border-primary-500"
+      >
+        <h3 class="text-lg font-semibold text-gray-800">{{ dept.departmentName }}</h3>
+        <p class="text-sm text-gray-500 mt-1">
+          {{ dept.departmentDescription || 'No description provided' }}
+        </p>
+
+        <div class="mt-4 flex items-center gap-2">
+          <div class="ml-auto flex items-center gap-2">
+            <button class="btn-secondary" (click)="openEditPopup(dept)">Edit</button>
+            <button class="btn-secondary" (click)="deleteDepartment(dept.departmentId)">
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- No Departments Template -->
+  <ng-template #noDepartments>
+    <div
+      class="grid place-content-center bg-white p-4 rounded-lg shadow-sm text-center text-gray-600 py-10 grow shrink-0 basis-[0%] h-full max-h-full"
+    >
+      <div class="grid gap-4 items-center">
+        <div class="grid items-center justify-center">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-32 h-32 text-primary-500 mx-auto"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h8" />
+          </svg>
+        </div>
+        <div class="grid gap-2">
+          <p class="text-xl font-semibold">No Departments found.</p>
+          <p class="text-sm text-center">
+            There are no departments available at the moment.
+            <br />
+            Click "Add Department" to create a new one.
+          </p>
+        </div>
+      </div>
+    </div>
+  </ng-template>
+</section>
+
+<!-- Popup Section -->
+<app-popup
+  #popup
+  [config]="popupConfig"
+  (closeEvent)="closePopup()"
+  (buttonClick)="handlePopupAction($event)"
+>
+  <ng-container *ngIf="popupConfig.popupFunctionalityType === 'add'">
+    <app-add-edit-department
+      #addDepartment
+      (saved)="onDepartmentSaved()"
+      (closed)="closePopup()"
+    ></app-add-edit-department>
+  </ng-container>
+
+  <ng-container *ngIf="popupConfig.popupFunctionalityType === 'edit'">
+    <app-add-edit-department
+      #addDepartment
+      (saved)="onDepartmentSaved()"
+      (closed)="closePopup()"
+    ></app-add-edit-department>
+  </ng-container>
+
+  <ng-container *ngIf="popupConfig.popupFunctionalityType === 'delete'">
+      <app-delete-department
+      #deleteDepartment
+      [departmentId]="selectedDepartmentId" 
+      (close)="closePopup()" 
+      (deleted)="onDepartmentDeleted()">
+      </app-delete-department>
+  </ng-container>
+</app-popup>

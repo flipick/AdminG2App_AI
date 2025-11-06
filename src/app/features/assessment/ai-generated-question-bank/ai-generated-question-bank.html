@@ -1,0 +1,66 @@
+<div>
+  <!-- Upload PDF -->
+  <div class="relative" [ngClass]="{ 'opacity-50 pointer-events-none': EditMode }">
+    <label class="block text-sm font-medium text-gray-700 mb-2">
+      Upload PDF <span class="text-red-500">*</span>
+    </label>
+
+    <input type="file" #pdfInput (change)="onPdfSelected($event)" accept="application/pdf"
+      class="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0
+             file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+
+    <!-- Show selected file -->
+    @if (selectedFile) {
+    <div class="mt-4 text-sm text-gray-800">
+      <strong>Selected File:</strong> {{ selectedFile.name }}
+    </div>
+    }
+    <div class="flex mt-4">
+      <button type="button" class="btn-primary" (click)="createOpenAIAssessmentQuestions()">Upload & Generate</button>
+    </div>
+  </div>
+  <div class="mt-6">
+    <form [formGroup]="contentBuilderForm" (ngSubmit)="addSelectedQuestionsToAssessment()">
+      @if (questionsFormArray.length > 0) {
+      <div class="grid gap-4">
+        <input type="hidden" formControlName="assessmentId" />
+
+        <div class="grid gap-4" formArrayName="questions">
+          <div *ngFor="let qCtrl of questionsFormArray.controls; let i = index" [formGroupName]="i"
+            class="card grid gap-4">
+            <!-- Question Text -->
+            <p class="font-semibold text-gray-800">Q{{ i + 1 }}: {{ qCtrl.get('questionText')?.value }}</p>
+
+            <!-- Options List -->
+            <ul class="grid gap-2 list-none list-inside text-gray-700">
+              <li class="form-input cursor-default">A: {{ qCtrl.get('a')?.value }}</li>
+              <li class="form-input cursor-default">B: {{ qCtrl.get('b')?.value }}</li>
+              <li class="form-input cursor-default">C: {{ qCtrl.get('c')?.value }}</li>
+              <li class="form-input cursor-default">D: {{ qCtrl.get('d')?.value }}</li>
+            </ul>
+
+            <!-- Correct Answer Display -->
+            <p class="text-green-700 font-medium">
+              <span>Answer:</span><strong> {{ qCtrl.get('answer')?.value }} </strong>
+            </p>
+
+            <!-- Optional: Show Solution if available -->
+            <p *ngIf="qCtrl.get('solution')?.value" class=" text-gray-600 italic border border-primary-500 bg-primary-50 rounded-md py-2 px-3">
+              <strong>Solution:</strong> {{ qCtrl.get('solution')?.value }}
+            </p>
+          </div>
+        </div>
+
+        <div class="flex justify-end mt-4">
+          <button type="submit" class="btn btn-primary">Save Questions</button>
+        </div>
+      </div>
+      }
+    </form>
+    <!-- Success & Error -->
+    <div class="mt-4">
+      <p class="text-green-700" *ngIf="successMessage">{{ successMessage }}</p>
+      <p class="text-red-700" *ngIf="errorMessage">{{ errorMessage }}</p>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,13 @@
+/* Optional custom scroll for left panel */
+.w-1\/3::-webkit-scrollbar {
+  width: 6px;
+}
+
+.w-1\/3::-webkit-scrollbar-thumb {
+  background-color: rgba(107, 114, 128, 0.5);
+  border-radius: 3px;
+}
+
+.preview-container iframe {
+  border: none;
+}

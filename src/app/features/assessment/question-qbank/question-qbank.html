@@ -1,0 +1,48 @@
+<form [formGroup]="contentBuilderForm" (ngSubmit)="addSelectedQuestionsToAssessment()">
+    <div class="grid gap-4">
+        <div>
+            <label class="form-label">Select Question Bank: </label>
+            <select formControlName="questionBankId" class="form-select w-auto min-w-xs"  (change)="onQuestionBankChange($event)">
+                <option value="">Select Question Bank</option>
+                <option *ngFor="let qb of questionBanks" [value]="qb.questionBankId">
+                    {{ qb.title }}
+                </option>
+            </select>
+            <input type="hidden" formControlName="assessmentId" />
+        </div>
+
+        <div *ngIf="QuestionOption =='QuestionBank'">
+            <label class="form-label">Question Selection: </label>
+            <select formControlName="questionSelectionType" class="form-select w-auto min-w-xs"  (change)="onQuestionSelectionChange($event)">
+                <option value="manual">Manual</option>
+                <option value="top">Top</option>
+                <option value="schedule">Any</option>
+            </select>
+        </div>
+        
+        <div class="grid gap-2" formArrayName="questions" *ngIf="QuestionOption !== 'QuestionBank' || contentBuilderForm.get('questionSelectionType')?.value === 'manual'">
+            <label
+                *ngFor="let qCtrl of questionsFormArray.controls; let i = index" [formGroupName]="i"
+                class="relative grid grid-cols-[auto_1fr] items-center gap-2 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg hover:border-primary-500 hover:text-primary-500 focus:text-primary-500 focus:ring-primary-500 focus:border-primary-500 has-checked:bg-primary-100 has-checked:border-primary-500 has-checked:text-primary-700 py-2 px-4 cursor-pointer">
+                <input type="checkbox" formControlName="isSelected" />
+                <span>{{ qCtrl.get('questionText')?.value }}</span>
+            </label>
+        </div>
+        <div>
+            @if (submitted && errorMessage != '') {
+            <div class="valid-feedback text-red-700 mt-5">
+                {{ errorMessage }}
+            </div>
+            }
+            @if (submitted && successMessage != '') {
+            <div class="valid-feedback text-green-700 mt-5">
+                {{ successMessage }}
+            </div>
+            }
+        </div>
+        <div>
+            <button type="submit" class="btn-outline disabled:opacity-50 disabled:cursor-not-allowed" [disabled]="NoOfQuestions == 0">Save Questions</button>
+        </div>
+    </div>  
+
+</form>

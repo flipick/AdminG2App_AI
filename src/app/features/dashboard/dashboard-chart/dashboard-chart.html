@@ -1,0 +1,52 @@
+<div class="grid grid-cols-2 gap-4">
+  <!-- Bar Chart -->
+  <div class="card">
+    <div>
+      <canvas
+        baseChart
+        #categoryChart
+        [data]="barChartData"
+        [type]="barChartType"
+        [options]="barChartOptions">
+      </canvas>
+    </div>
+  </div>
+
+  <!-- Line Chart -->
+  <div class="card">
+    <h3 class="text-gray-700 font-semibold mb-2">Completion Trends</h3>
+    <canvas
+      baseChart
+      [data]="lineChartData"
+      [type]="lineChartType"
+      [options]="lineChartOptions">
+    </canvas>
+  </div>
+
+  <!-- Doughnut Chart -->
+  <div class="card hidden">
+    <h3 class="text-gray-700 font-semibold mb-2">Pass Rate Distribution</h3>
+    <div class="mx-auto w-[70%]">
+      <canvas
+        baseChart
+        #doughnutChart
+        [data]="doughnutChartData"
+        [type]="doughnutChartType"
+        [options]="doughnutChartOptions">
+      </canvas>
+    </div>
+  </div>
+
+  <!-- Pie Chart -->
+  <div class="card hidden">
+    <h3 class="text-gray-700 font-semibold mb-2">Performance Rating</h3>
+    <div class="mx-auto w-[70%]">
+      <canvas
+        baseChart
+        [data]="pieChartData"
+        [type]="pieChartType"
+        [options]="pieChartOptions">
+      </canvas>
+    </div>
+  </div>
+</div>

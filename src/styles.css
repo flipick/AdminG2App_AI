@@ -1,0 +1,285 @@
+/* You can add global styles to this file, and also import other style files */
+@import "tailwindcss";
+
+:root {
+  --color-primary: oklch(51.469% 0.2288 272.818);
+  --main-header-height: 4rem;
+  --main-sidebar-width: 16rem;
+}
+
+@theme {
+  --font-inter: 'Inter', sans-serif; 
+  /* Lighter tints */
+  --color-primary-50: color-mix(in oklch, white 95%, var(--color-primary));
+  --color-primary-100: color-mix(in oklch, white 85%, var(--color-primary));
+  --color-primary-200: color-mix(in oklch, white 75%, var(--color-primary));
+  --color-primary-300: color-mix(in oklch, white 60%, var(--color-primary));
+  --color-primary-400: color-mix(in oklch, white 40%, var(--color-primary));
+
+  /* Base */
+  --color-primary-500: var(--color-primary);
+
+  /* Darker shades */
+  --color-primary-600: color-mix(in oklch, black 10%, var(--color-primary));
+  --color-primary-700: color-mix(in oklch, black 20%, var(--color-primary));
+  --color-primary-800: color-mix(in oklch, black 30%, var(--color-primary));
+  --color-primary-900: color-mix(in oklch, black 35%, var(--color-primary));
+  --color-primary-950: color-mix(in oklch, black 40%, var(--color-primary));
+}
+
+@layer components {
+  .main-fixed-header {
+    @apply fixed left-0 top-0 right-0 z-30 w-full h-(--main-header-height);
+  }
+
+  .main-fixed-sidebar {
+    @apply fixed left-0 bottom-0 z-20 bg-white shadow-sm top-(--main-header-height) w-(--main-sidebar-width) h-[calc(100dvh-var(--main-header-height))] overflow-x-hidden overflow-y-auto;
+  }
+
+  .main-content-container {
+    @apply relative bg-primary-50 min-h-dvh ml-(--main-sidebar-width) px-4 pb-4 pt-[calc(var(--main-header-height)+(var(--spacing)*4))] flex flex-col;
+
+    & .main-content-full-h {
+      @apply flex-grow min-h-0 grid;
+
+      & .page-container {
+        @apply flex flex-col gap-4 h-full;
+
+        & .page-content {
+          @apply grow shrink-0 basis-[0%] h-full max-h-full flex flex-col gap-4;
+        }
+      }
+    }   
+  }
+
+  .page-header {
+    @apply flex items-center justify-between bg-primary-100 p-6 rounded-lg shadow-sm border border-primary-300/80;
+
+    & .heading-txt {
+      @apply text-2xl font-semibold text-primary-700;
+    }
+
+    & .content-text {
+      @apply text-sm text-primary-900/85 mt-1;
+    }
+  }
+
+  .select-multiple {
+    @apply flex flex-wrap gap-2 items-center;
+
+    & > .option {
+      @apply relative flex justify-center items-center gap-2 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg hover:border-primary-500 hover:text-primary-500 focus:text-primary-500 focus:ring-primary-500 focus:border-primary-500 has-checked:bg-primary-100 has-checked:border-primary-500 has-checked:text-primary-700 py-2 px-4 cursor-pointer;
+
+      & > input {
+        @apply sr-only;
+      }
+    }
+  }
+
+  .checkbox-group {
+    @apply text-sm inline-flex flex-wrap items-center gap-2 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg p-2 *:py-2 *:px-3;
+
+    & > .checkbox-label {
+      @apply relative flex justify-center items-center gap-2 bg-white border border-gray-300 text-gray-900 rounded-lg cursor-pointer hover:enabled:border-primary-500 hover:text-primary-500 focus:text-primary-500 focus:ring-primary-500 focus:border-primary-500 has-checked:bg-primary-100 has-checked:border-primary-500 has-checked:text-primary-700 has-disabled:cursor-not-allowed has-disabled:opacity-60;
+
+      & > input[type="radio"] {
+       @apply sr-only
+      }
+    }
+
+  }
+
+  hr {
+    @apply block my-4 border border-gray-200; 
+  }
+
+  .form-label {
+    @apply block text-sm font-medium text-gray-700 mb-1;
+  }
+
+  .form-input {
+    @apply text-sm bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-500 focus:outline-none focus:border-indigo-500 focus:bg-indigo-50 block w-full px-4 py-2 cursor-pointer placeholder:text-gray-400;
+  }
+
+  .form-select {
+    @apply text-sm bg-gray-50 bg-no-repeat bg-size-[auto_12px] bg-position-[center_right_10px] border border-gray-300 text-gray-900 rounded-lg appearance-none focus:outline-none focus:bg-primary-100 focus:ring-primary-500 focus:border-primary-500 disabled:cursor-not-allowed disabled:opacity-60 block w-full py-2 pl-2 pr-5 cursor-pointer;
+    background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/></svg>");
+  }
+
+  .form-textarea {
+    @apply text-sm bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-500 focus:outline-none focus:border-indigo-500 focus:bg-indigo-50 block w-full p-2 cursor-pointer resize-none h-32;
+  }
+
+  .btn-primary {
+    @apply inline-flex justify-center items-center gap-1 bg-primary-500 text-white text-sm font-semibold px-4 py-1.5 rounded-lg cursor-pointer hover:bg-primary-600;
+  }
+
+  .btn-secondary {
+    @apply inline-flex justify-center items-center gap-1 bg-gray-50 border border-gray-300 text-gray-900 text-sm font-semibold px-4 py-1.5 rounded-lg cursor-pointer hover:bg-gray-100;
+  }
+
+  .btn-outline {
+    @apply inline-flex justify-center items-center gap-1 text-primary-500 text-sm font-semibold px-4 py-1.5 rounded-lg border border-primary-500 cursor-pointer hover:text-white hover:bg-primary-500;
+  }
+
+  .btn-outline-secondary {
+    @apply inline-flex justify-center items-center gap-1 bg-gray-50 border border-gray-300 text-gray-700 text-sm font-semibold px-4 py-1.5 rounded-lg cursor-pointer hover:bg-gray-100;
+  }
+
+  .btn-sm {
+    @apply text-xs px-2 py-1;
+  }
+
+  .btn-md {
+    @apply text-sm px-4 py-2;
+  }
+
+  .btn-modal-primary {
+    @apply bg-primary-500 hover:bg-primary-700 text-white;
+  }
+
+  .btn-modal-light {
+    @apply text-gray-700 bg-gray-200 hover:bg-gray-300 hover:text-gray-900;
+  }
+
+  .card {
+    @apply bg-white rounded-xl p-4 border border-primary-300/50 shadow;
+  }
+}
+
+@layer utilities {
+  /* base utility */
+  .animate-pump {
+    animation: pump 1s ease-in-out infinite;
+    /* for nicer SVG scaling */
+    transform-origin: center;
+    transform-box: fill-box;
+  }
+
+  /* enable group-hover for our custom utility */
+  .group:hover .group-hover\:animate-pump {
+    animation: pump 1s ease-in-out infinite;
+    transform-origin: center;
+    transform-box: fill-box;
+  }
+
+  .animate-arrow-left {
+    animation: arrow-left 0.6s ease-in-out infinite;
+  }
+
+  .group:hover .group-hover\:animate-arrow-left {
+    animation: arrow-left 0.6s ease-in-out infinite;
+  }
+
+}
+
+@keyframes pump {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.3);
+  }
+}
+
+@keyframes arrow-left {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(-0.25rem); }
+}
+
+.disabled-field {
+  background-color: #f5f5f5;
+  color: #888;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+span[contenteditable="true"] {
+  @apply block text-sm rounded-lg bg-gray-50 border border-gray-300 cursor-pointer px-2 py-1;
+}
+span[contenteditable="false"] {
+  @apply block text-sm rounded-none bg-transparent border-none cursor-default;
+}
+
+.reply-mark h1 {
+  @apply text-2xl;
+}
+
+.reply-mark h2 {
+  @apply text-xl;
+}
+
+.reply-mark h3 {
+  @apply text-lg;
+}
+
+.reply-mark p {
+  @apply text-base mb-2;
+}
+
+.reply-mark p:only-child {
+  @apply text-base mb-0;
+}
+
+.reply-mark ul,
+ol {
+  @apply text-base mt-1 mb-4 mx-0;
+}
+
+.reply-mark li {
+  @apply mb-1;
+}
+
+.reply-mark ul {
+   @apply list-none list-outside;
+}
+
+.reply-mark ul li {
+   @apply relative before:content-['-'] before:absolute before:left-0 before:text-gray-700 before:font-normal pl-4;
+}
+
+.reply-mark strong {
+  @apply font-bold;
+}
+
+.reply-mark em {
+  @apply italic;
+}
+
+.reply-mark blockquote {
+  @apply border-l-4 border-gray-300 pl-4 my-4 text-gray-700 italic;
+}
+
+.reply-mark pre {
+  @apply bg-gray-100 p-4 rounded overflow-x-auto font-mono;
+}
+
+.reply-mark code {
+  @apply bg-gray-200 px-2 py-1 rounded text-sm font-mono;
+}
+
+.reply-mark p + ol > li > p:only-of-type {
+  @apply !m-0 ;
+}
+
+.reply-mark p + ol > li > p:only-child {
+  @apply m-4;
+}
+
+.reply-mark p + ol > li > p + ul {
+  @apply mb-5
+}
+
+.reply-mark h3 + ul,
+.reply-mark h2 + ul {
+  @apply mb-5
+}
+
+.reply-mark ol {
+  @apply pl-4 list-decimal;
+}
+
+.reply-mark img {
+  @apply max-w-full h-auto;
+}
+

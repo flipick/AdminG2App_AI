@@ -1,0 +1,18 @@
+<div class="preview-container relative h-[calc(100vh-120px)]">
+  <!-- <button class="absolute top-2 right-2 btn-outline" (click)="onClose()">Close</button> -->
+
+  <ng-container *ngIf="previewurl">
+    <div *ngIf="isPdf()" class="pdf-preview relative h-full">
+      <iframe [src]="previewurl | safeUrl" class="absolute inset-0 w-full h-full"></iframe>
+    </div>
+
+    <div *ngIf="isHtmlOrWebsite()" class="html-preview relative h-full">
+      <iframe [src]="previewurl | safeUrl" class="absolute inset-0 w-full h-full"></iframe>
+    </div>
+  </ng-container>
+
+  <div *ngIf="!previewurl" class="text-gray-500">
+    No Preview Available
+  </div>
+</div>
+

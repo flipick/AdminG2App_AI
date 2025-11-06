@@ -1,0 +1,66 @@
+<div class="page-container">
+    <!-- Header -->
+    <header class="page-header">
+        <div>
+            <h1 class="text-2xl font-bold text-indigo-700">Question Bank Creation</h1>
+            <p class="text-sm text-gray-600 mt-1">Create Question Bank</p>
+        </div>
+        <div class="ml-auto">
+            <button type="button" (click)="goBackToList()" class="btn-outline group">
+                <span class="w-[1.5em]">
+                    <svg class="w-full h-full group-hover:animate-arrow-left" viewBox="0 0 24 24" fill="none"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <path d="M6 12H18M6 12L11 7M6 12L11 17" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                </span>
+                <span>Back to List</span>
+            </button>
+        </div>
+    </header>
+
+    <section class="page-content">
+        <div class="p-6 bg-white rounded-xl shadow-md mb-6 border border-blue-100">
+            <form [formGroup]="questionBankForm" (ngSubmit)="uploadExcel()">
+                <div class="relative mb-5">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Title <span
+                            class="text-red-500">*</span></label>
+                    <input type="text" formControlName="title" class="form-input"  />
+                    @if (submitted && f['title'].errors) {
+                    <div class="text-red-500 text-sm mt-1">
+                        @if (f['title'].errors['required']) {
+                        <p>Please enter title</p>
+                        }
+                    </div>
+                    }
+                </div>
+                <div class="relative">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Upload Questions Excel <span class="text-red-500">*</span>
+                    </label>
+
+                    <input type="file" (change)="onFileChanged($event)"
+                        class="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0  file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+                        @if (submitted && f['ImportedFile'].errors) {
+                            <div class="text-red-500 text-sm mt-1">
+                                @if (f['ImportedFile'].errors['required']) {
+                                <p>Please select file to import</p>
+                                }
+                                @if (f['ImportedFile'].errors['requiredFileType']) {
+                                <p>Please select valid file type</p>
+                                }
+                            </div>
+                        }
+                        <div class="mt-4">
+                            <p class="text-green-700" *ngIf="successMessage">{{ successMessage }}</p>
+                            <p class="text-red-700" *ngIf="errorMessage">{{ errorMessage }}</p>
+                        </div>
+
+                        <div class="flex mt-4">
+                            <button type="submit" class="btn-primary">{{ id! > 0 ? 'Append' : 'Generate'}}</button>
+                        </div>
+                </div>
+            </form>
+        </div>
+    </section>
+</div>

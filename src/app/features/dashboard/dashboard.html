@@ -1,0 +1,78 @@
+<div class="page-container">
+    <!-- Header -->
+    <header class="page-header">
+        <!-- Left Side: Title & Subtitle -->
+        <div>
+            <h1 class="heading-txt">Dashboard</h1>
+            <p class="content-text">Welcome to your learning management system overview</p>
+        </div>
+        <!-- Right Side: Back Button -->
+        <div class="ml-auto">
+        </div>
+    </header>
+    <section class="page-content">
+        <!-- Top Stats -->
+        <div class="grid grid-cols-4 gap-4">
+
+            <ng-container *ngFor="let card of cards">
+                @if(permissions[card.permissionKey]) {
+                    <div
+                        class="card"
+                        >
+                        <h3 class="text-gray-700 font-semibold">{{ card.title }}</h3>
+                        <p class="text-3xl font-bold text-indigo-600">
+                            <app-animated-numbers 
+                                [number]="getCardValue(card)" 
+                                [prefix]="card.prefix || ''"
+                                [suffix]="card.suffix || ''">
+                            </app-animated-numbers>
+                        </p>
+                        <p class="text-sm text-gray-500">
+                            {{ card.description }}
+                        </p>
+                    </div>
+                }
+            </ng-container>
+
+        </div>
+        <app-dashboard-chart [tenantId]="tenantId" [roleName]="roleName"></app-dashboard-chart>
+
+        <app-course-dashboard-list  [tenantId]="tenantId" [roleName]="roleName">
+        </app-course-dashboard-list>
+
+        <!-- Recent Activity -->
+        <div class="card">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Recent Course Activity</h2>
+
+            <div class="grid gap-4 2xl:grid-cols-2">
+                <div
+                    *ngFor="let course of recentCourses"
+                    class="flex justify-between items-center bg-primary-50 rounded-lg shadow-sm p-4">
+                    <div>
+                        <h3 class="font-medium text-gray-900 mb-1">{{ course.title }}</h3>
+                        <p class="flex items-center gap-2 text-sm text-gray-500">
+                            <span>{{ course.category }}</span>
+                            <span class="inline-block w-1 h-1 rounded-full bg-gray-500"></span>  
+                            <span>{{ course.duration }}</span>
+                            <span class="inline-block w-1 h-1 rounded-full bg-gray-500"></span> 
+                            <span
+                                class="inline-block capitalize px-2 py-0.5 text-xs rounded-full ml-1"
+                                [ngClass]="{
+                                'bg-primary-200 text-primary-500': course.status === 'PUBLISHED',
+                                'bg-gray-300 text-gray-800': course.status === 'DRAFT'
+                                }"
+                            >
+                                {{ course.status }}
+                            </span>
+                        </p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-semibold text-primary-500">{{ course.enrolled }} enrolled</p>
+                        <p class="text-sm text-gray-500">{{ course.completion }}% completion</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </section>
+</div>

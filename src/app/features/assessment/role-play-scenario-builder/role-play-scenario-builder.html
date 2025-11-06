@@ -1,0 +1,163 @@
+<form [formGroup]="scenarioForm" (ngSubmit)="saveScenario()">
+    <div class="grid gap-8">
+        <div class="flex items-center gap-4">
+            <h2 class="text-lg font-semibold">Role Play Scenario Builder</h2>
+        </div>
+        
+        <!-- Scenario Title -->
+        <div class="relative">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Scenario Title</label>
+            <input 
+                type="text" 
+                formControlName="title"
+                class="form-input" />
+
+            @if (submitted && f['title'].errors) {
+                <div class="text-red-500 text-sm mt-1">
+                    @if (f['title'].errors['required']) {
+                    <p>Please enter scenario title</p>
+                    }
+                </div>
+            }
+        </div>
+
+         <!-- Scenario Description -->
+        <div class="relative"> 
+            <label class="block text-sm font-medium text-gray-700 mb-1">Scenario Description</label>
+            <textarea 
+                formControlName="description"
+                class="form-textarea"></textarea>
+        </div>
+
+        <!-- Learning Objectives -->
+        <div class="relative grid gap-4"> 
+            <div class="flex items-center gap-4">
+                <label class="block text-sm font-medium text-gray-700">Learning Objectives</label>
+                <div class="ml-auto">
+                    <button type="button" (click)="addLearningObjective()"
+                    class="btn-primary group">
+                        <span class="w-[1em] h-[1em]">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full group-hover:animate-pump">
+                                <g id="Edit / Add_Plus">
+                                    <path id="Vector" d="M6 12H12M12 12H18M12 12V18M12 12V6" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+                                </g>
+                            </svg>
+                        </span>
+                        <span>Add Objective</span>
+                    </button>
+                </div>
+            </div>            
+
+            
+            <div formArrayName="learningObjective" class="grid gap-4">
+               @for (obj of learningObjective.controls; track i; let i = $index) {
+                    @if(!obj.value.isRemoved){
+                        <div class="flex gap-4" [formGroupName]="i">
+                            <input type="text" formControlName="objective" placeholder="Enter learning objective"
+                        class="form-input" />
+                            <button type="button" (click)="removeLearningObjective(i)"
+                            class="btn-outline btn-sm">Remove</button>
+                        </div>
+                        @if (submitted && obj.get('objective')?.errors?.['required']) {
+                            <div class="text-red-500 text-sm mt-1">
+                                <p>Please enter objective</p>
+                            </div>
+                        }
+                    }
+                }
+            </div>
+        </div>
+
+        <!-- Duration and Role Assignments -->
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
+                <input type="number" formControlName="duration" class="form-input" />
+                @if (submitted && f['duration'].errors) {
+                <div class="text-red-500 text-sm mt-1">
+                    @if (f['duration'].errors['required']) {
+                    <p>Please enter duration</p>
+                    }
+                </div>
+                }
+            </div>
+            <div class="col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Role Assignments</label>
+                <input type="text" formControlName="roles" placeholder="e.g., Customer Service Rep, Customer"
+                    class="form-input" />
+            </div>
+        </div>
+
+        <!-- Evaluation Criteria -->
+        <div class="relative">
+            <div class="flex items-center gap-4 mb-4">
+                <label class="block text-sm font-medium text-gray-700">Evaluation Criteria</label>
+                <div class="ml-auto">
+                    <button type="button" (click)="addCriteria()"
+                    class="btn-primary group">
+                        <span class="w-[1em] h-[1em]">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full group-hover:animate-pump">
+                                <g id="Edit / Add_Plus">
+                                    <path id="Vector" d="M6 12H12M12 12H18M12 12V18M12 12V6" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+                                </g>
+                            </svg>
+                        </span>
+                        <span>Add Criteria</span>
+                    </button>
+                </div>
+            </div>
+
+             <div formArrayName="evaluationCriteria" class="grid gap-4">
+               @for (crit of evaluationCriteria.controls; track i; let i = $index) {
+                    @if(!crit.value.isRemoved){
+                        <div class="flex gap-4" [formGroupName]="i">
+                            <input type="text" formControlName="criteria" placeholder="Criteria name"
+                            class="form-input grow shrink-0 basis-[0%] w-full max-w-full" />
+                            <input type="number" formControlName="points" class="form-input grow-0 shrink-0 basis-auto w-24">
+                            <button type="button" (click)="removeCriteria(i)"
+                            class="btn-outline btn-sm">Remove</button>
+                        
+                            @if (submitted && crit.get('criteria')?.errors?.['required']) {
+                                <div class="text-red-500 text-sm mt-1">
+                                    <p>Please enter criteria</p>
+                                </div>
+                            }
+                            @if (submitted && crit.get('points')?.errors?.['required']) {
+                                <div class="text-red-500 text-sm mt-1">
+                                    <p>Please enter points</p>
+                                </div>
+                            }
+                            @if (submitted && crit.get('points')?.errors?.['min']) {
+                                <div class="text-red-500 text-sm mt-1">
+                                    <p>Points must be at least 1</p>
+                                </div>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4 flex items-center">
+        <div>
+            @if (submitted && errorMessage != '') {
+                <div class="valid-feedback text-red-700 mt-5">
+                    {{ errorMessage }}
+                </div>
+            }
+
+            @if (submitted && successMessage != '') {
+                <div class="valid-feedback text-green-700 mt-5">
+                    {{ successMessage }}
+                </div>
+            }
+        </div>
+        <div class="ml-auto">
+            <button class="btn-primary">
+                Save Scenario
+            </button>
+        </div>
+    </div>
+
+</form>

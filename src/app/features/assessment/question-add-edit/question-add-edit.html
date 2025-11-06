@@ -1,0 +1,117 @@
+<!-- Render only when the form is ready -->
+@if(contentBuilderForm) {
+<form [formGroup]="contentBuilderForm" (ngSubmit)="submitQuestions()">
+    <div class="relative grid">
+        <!-- Loop through questions -->
+        <div formArrayName="questions" class="grid gap-6">
+            @for (question of questions.controls; track qIndex; let qIndex = $index) {
+            <div #questionItem [formGroupName]="qIndex"
+                class="card grid gap-4">
+                <div class="flex items-center">
+                    <h2 class="text-lg font-semibold">Question {{ qIndex + 1 }}</h2>
+                    <div class="ml-auto">
+                        <button type="button" class="btn-outline " (click)="removeQuestion(qIndex)">
+                            Remove
+                        </button>
+                    </div>
+                </div>
+
+
+                <!-- Question Text -->
+                <div class="relative">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Question Text</label>
+                    <textarea formControlName="questionText" class="form-textarea"></textarea>
+                </div>
+
+                <div class="grid grid-cols-6 gap-4">
+                    <!-- Question Type -->
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Question Type</label>
+                        <select formControlName="questionTypeId" (change)="updateQuestionType(qIndex)"
+                            class="form-select">
+                            <option *ngFor="let question of questionTypes" [value]="question.questionTypeId">{{
+                                question.questionTypeName }}</option>
+                        </select>
+                    </div>
+                    <!-- Points -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Points</label>
+                        <input type="number" formControlName="points" class="form-input" />
+                    </div>
+                </div>
+
+
+                <!-- Options -->
+                <div formArrayName="options" class="space-y-2 mb-4">
+                    @for (option of getOptions(qIndex).controls; track option; let oIndex = $index) {
+                    <label [formGroupName]="oIndex"
+                        class="group grid grid-cols-[auto_1fr] items-center gap-2 border border-gray-300 rounded-lg p-2 has-checked:bg-primary-100 has-checked:ring-primary-500 has-checked:border-primary-500">
+
+                        <!-- Correct answer selector -->
+                        @if (this.questions.at(qIndex).get('questionTypeId')?.value == 2) {
+                        <input type="checkbox" name="correctAnswer{{qIndex}}" [checked]="option.get('selected')?.value"
+                            (click)="selectCorrectAnswer(qIndex, oIndex)"
+                            class="w-4 h-4 accent-primary-500 cursor-pointer" />
+                        }
+                        @else {
+                        <input type="radio" name="correctAnswer{{qIndex}}" [checked]="option.get('selected')?.value"
+                            (click)="selectCorrectAnswer(qIndex, oIndex)"
+                            class="w-4 h-4 accent-primary-500 cursor-pointer" />
+                        }
+
+                        <!-- Option value -->
+                        @if (questions.at(qIndex).get('questionTypeId')?.value == trueFalseType) {
+                        <!-- Show fixed True/False -->
+                        <span class="font-medium">
+                            {{ oIndex === 0 ? 'True' : 'False' }}
+                        </span>
+                        }
+                        @else {
+                        <!-- Show editable input -->
+                        <input type="text" formControlName="value" class="focus:outline-none placeholder:text-gray-300" [placeholder]="'Option ' + String.fromCharCode(65 + oIndex)" (input)="onOptionValueChange(qIndex, oIndex, $any($event.target).value)"  />
+
+                        }
+                    </label>
+                    }
+                </div>
+
+
+                <!-- Explanation -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Explanation (Optional)</label>
+                    <textarea formControlName="explanation" rows="2" class="form-textarea"></textarea>
+                </div>
+            </div>
+            }
+        </div>
+
+        <div class="mt-4 flex items-center gap-2">
+            <div>
+                @if (submitted && errorMessage != '') {
+                <div class="valid-feedback text-red-700 mt-5">
+                    {{ errorMessage }}
+                </div>
+                }
+
+                @if (submitted && successMessage != '') {
+                <div class="valid-feedback text-green-700 mt-5">
+                    {{ successMessage }}
+                </div>
+                }
+            </div>
+            <!-- Add Question button -->
+            <div class="">
+                <button type="button" class="btn-outline disabled:opacity-50 disabled:cursor-not-allowed" (click)="addNewQuestion()"
+                    [disabled]="questions.length >= NoOfQuestions">
+                    Add New Question
+                </button>
+            </div>
+            <div class="ml-auto">
+                <button class="btn-primary">
+                    Save Questions
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+}

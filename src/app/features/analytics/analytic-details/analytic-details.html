@@ -1,0 +1,63 @@
+<div class="page-container">
+    <!-- Header -->
+    <header class="page-header">
+        <!-- Left Side: Title & Subtitle -->
+        <div>
+        <h1 class="heading-txt">Analytics</h1>
+        <p class="content-text">
+            Track and measure performance with actionable insights.
+        </p>
+        </div>
+
+        <!-- Right Side: Back Button -->
+        <div class="ml-auto"></div>
+    </header>
+
+    <section class="page-content">
+        @if(permissions.showTenantDropdown) {
+            <div class="flex items-center card">
+                <div class="flex items-end gap-4">
+                    <div class="min-w-40">
+                        <label class="block mb-2 text-sm text-gray-900">Tenant</label>
+                        <select class="form-select" [(ngModel)]="selectedTenantId" (change)="filterByTenant(selectedTenantId)">
+                            @for(tenant of tenantlist; track $index) {
+                            <option [value]="tenant.tenantId">
+                                {{ tenant.tenantName }}
+                            </option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="card">
+            <div class="flex justify-between items-center border-b border-primary-300/80 mb-6">
+                <div class="flex">
+                    <button (click)="setActiveTab('tenantdetails');" class="px-4 py-2 border-b-4"
+                        [ngClass]="{'font-medium text-primary-500  border-primary-500 cursor-default': activeTab === 'tenantdetails', 'text-gray-600 border-transparent cursor-pointer': activeTab !== 'tenantdetails' }">
+                        Tenant Overview
+                    </button>
+                    <button (click)="setActiveTab('departmentdetails');" class="px-4 py-2 border-b-4"
+                        [ngClass]="{'font-medium text-primary-500  border-primary-500 cursor-default': activeTab === 'departmentdetails', 'text-gray-600 border-transparent cursor-pointer': activeTab !== 'departmentdetails'}">
+                        Department Analytics
+                    </button>
+                    <button (click)="setActiveTab('learnerdetails');" class="px-4 py-2 border-b-4"
+                        [ngClass]="{'font-medium text-primary-500  border-primary-500 cursor-default': activeTab === 'learnerdetails', 'text-gray-600 border-transparent cursor-pointer': activeTab !== 'learnerdetails' }">
+                        Learner Details
+                    </button>
+                </div>
+            </div>
+            @if (activeTab === 'tenantdetails') {
+                <app-tenant-analytic-details [currentTenantId]="selectedTenantId"></app-tenant-analytic-details>
+            }
+            @else if (activeTab === 'departmentdetails') {
+            <app-department-analytic-details [currentTenantId]="selectedTenantId"></app-department-analytic-details>
+            }
+            @else if (activeTab === 'learnerdetails') {
+                <app-learner-analytic-details [currentTenantId]="selectedTenantId"></app-learner-analytic-details>
+            }
+        </div>
+    </section>
+
+</div>

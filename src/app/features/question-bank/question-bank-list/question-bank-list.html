@@ -1,0 +1,114 @@
+<div class="page-container">
+    <header class="page-header">
+        <div>
+            <h1 class="heading-txt">Question Bank Management</h1>
+            <p class="content-text">Manage question bank</p>
+        </div>
+        <div class="ml-auto">
+            <button (click)="goToCreateNewQuestionBank()" class="btn-primary group"
+                *ngIf="permissions.showCreateNewQuestionBankButton">
+                <span class="w-[1em] h-[1em]">
+                    <svg class="w-full h-full group-hover:animate-pump" viewBox="0 0 24 24" fill="none"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <g id="Edit / Add_Plus">
+                            <path id="Vector" d="M6 12H12M12 12H18M12 12V18M12 12V6" stroke="currentColor"
+                                stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                        </g>
+                    </svg>
+                </span>
+                <span>New Question Bank</span>
+            </button>
+        </div>
+    </header>
+    <section class="page-content">
+        @if(permissions.showTenantDropdown) {
+        <div class="flex items-center bg-white p-4 rounded-lg shadow-sm mb-6">
+            <div class="flex items-end gap-4">
+                <div class="min-w-40">
+                    <label class="block mb-2 text-sm text-gray-900">Tenant</label>
+                    <select class="form-select" [(ngModel)]="selectedTenantId"
+                        (change)="filterByTenant(selectedTenantId)">
+                        @for(tenant of tenantlist; track $index) {
+                        <option [value]="tenant.tenantId">
+                            {{ tenant.tenantName }}
+                        </option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+        }
+        <div class="grid gap-4 2xl:grid-cols-2">
+            @for (questionBank of questionBanks; track $index) {
+            <div class="group grid gap-4 bg-white rounded-xl p-6 border border-primary-300/50 shadow-md">
+                <div>
+                    <div class="flex items-center gap-3">
+                        <h3 class="text-lg font-semibold text-gray-800">
+                            {{ questionBank.title }}
+                        </h3>
+                        <span class=" items-center rounded-full px-2 py-1 text-xs font-medium border hidden" [ngClass]="{
+                                'bg-gray-50 text-gray-600 border-gray-600': questionBank.status === 'Draft',
+                                'bg-primary-100 text-primary-500 border-primary-500': questionBank.status === 'Ready For Assessment'
+                                }">
+                            {{ questionBank.status }}
+                        </span>
+                    </div>
+
+                    <p class="text-sm text-gray-500 mt-1">
+                        <span>Number of Questions: </span><span>{{ questionBank.totalQuestion }}</span>
+                    </p>
+                </div>
+
+                <div class="flex items-end gap-3">
+                    <div class="min-w-48 hidden">
+                        <label class="form-label">Status: </label>
+                        <select class="form-select" [(ngModel)]="questionBank.status"
+                            (change)="onStatusChange(questionBank)">
+                            <option value="Draft">Draft</option>
+                            <option value="Ready For Assessment">Ready For Assessment</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        @if(questionBank.contentTypeUrl != null && questionBank.contentTypeUrl != '')
+                        {
+                        <a href="javascript:void();" (click)="downloadExcel(questionBank.contentTypeUrl);"
+                            class="btn-outline" download="Download Question Bank">Download</a>
+                        }
+                        <a href="javascript:void();" (click)="sampleExcel();" class="btn-outline"
+                            download="Sample Question Bank">Sample Download</a>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <div class="ml-auto flex items-center gap-2">
+                        <button class="btn-outline-secondary" (click)="previewQuestionBank(questionBank.questionBankId)">
+                            Preview
+                        </button>
+                        <button class="btn-outline-secondary" (click)="appendQuestionBank(questionBank.questionBankId)">
+                            Append
+                        </button>
+                        <button class="btn-outline-secondary hidden"
+                            (click)="approvedQuestionBank(questionBank.questionBankId)">
+                            Approved Question
+                        </button>
+                        <button (click)="deleteQuestionBank(questionBank.questionBankId)" class="btn-outline-secondary">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+            }
+        </div>
+    </section>
+</div>
+<app-popup [config]="popupConfig" (closeEvent)="closePopup()" (buttonClick)="handlePopupAction($event)">
+    @if (popupConfig.popupFunctionalityType === 'delete') {
+        <app-delete-question-bank #deletequestionbank [questionBankId]="selectedQuestionBankId" (close)="closePopup()"
+            (deleted)="onQuestionBankDeleted()">
+        </app-delete-question-bank>
+    }
+    @if (popupConfig.popupFunctionalityType === 'preview') {
+        <app-preview-question-bank #previewquestionbank [questionBankId]="selectedQuestionBankId" (close)="closePopup()" >
+        </app-preview-question-bank>
+    }
+</app-popup>

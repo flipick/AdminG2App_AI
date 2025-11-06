@@ -1,0 +1,70 @@
+<aside class="h-full px-2 py-4">
+    <nav class="flex flex-col gap-3 text-sm">
+        <a routerLink="/dashboard" routerLinkActive="bg-blue-100 text-blue-700 font-bold"
+            [routerLinkActiveOptions]="{ exact: true }"
+            class="flex items-center gap-2 px-4 py-2 rounded hover:bg-blue-50">
+            📊 Dashboard
+        </a>
+
+        <a [routerLink]="['/course-list']" 
+            [ngClass]="{ 'bg-blue-100 text-blue-700 font-bold': isCourseSectionActive() }" 
+            class="flex items-center gap-2 px-4 py-2 rounded hover:bg-blue-50" > 
+                📚 Course Management 
+        </a>
+
+        <a [routerLink]="['/assessment-list']" 
+            [ngClass]="{ 'bg-blue-100 text-blue-700 font-bold': isAssessmentSectionActive() }" 
+            class="flex items-center gap-2 px-4 py-2 rounded hover:bg-blue-50">
+            📝 Assessment Management
+        </a>
+
+        <a routerLink="/skills" 
+            [ngClass]="{ 'bg-blue-100 text-blue-700 font-bold': isEditSkillsSectionActive() }"
+            class="flex items-center gap-2 px-4 py-2 rounded hover:bg-blue-50">
+            🎯 Skills Framework
+        </a>
+
+        <a routerLink="/employee-list" routerLinkActive="bg-blue-100 text-blue-700 font-bold"
+            class="flex items-center gap-2 px-4 py-2 rounded hover:bg-blue-50">
+            👥 Employee Management
+        </a>
+
+        <a routerLink="/evaluation" routerLinkActive="bg-blue-100 text-blue-700 font-bold"
+            class="flex items-center gap-2 px-4 py-2 rounded hover:bg-blue-50">
+            ⭐ Talent Evaluation
+        </a>
+
+        <a routerLink="/ai-assistant" routerLinkActive="bg-blue-100 text-blue-700 font-bold"
+            class="flex items-center gap-2 px-4 py-2 rounded hover:bg-blue-50">
+            🤖 AI Assistant
+        </a>
+
+        <!-- <a routerLink="/lms-integration" routerLinkActive="bg-blue-100 text-blue-700 font-bold"
+            class="flex items-center gap-2 px-4 py-2 rounded hover:bg-blue-50">
+            🔗 LMS Integration
+        </a> -->
+
+        <a routerLink="/analytics" routerLinkActive="bg-blue-100 text-blue-700 font-bold"
+            class="flex items-center gap-2 px-4 py-2 rounded hover:bg-blue-50">
+            📈 Analytics
+        </a>
+
+        <a routerLink="/tenants" routerLinkActive="bg-blue-100 text-blue-700 font-bold"
+            class="flex items-center gap-2 px-4 py-2 rounded hover:bg-blue-50">
+            🏢 Tenants
+        </a>
+        <a [routerLink]="['/question-bank-list']" routerLinkActive="bg-blue-100 text-blue-700 font-bold"
+            [ngClass]="{ 'bg-blue-100 text-blue-700 font-bold': isQuestionBankActive() }" 
+            class="flex items-center gap-2 px-4 py-2 rounded hover:bg-blue-50">
+            ❔ Question Bank
+        </a>
+        <a [routerLink]="['/department']"  routerLinkActive="bg-blue-100 text-blue-700 font-bold"
+            class="flex items-center gap-2 px-4 py-2 rounded hover:bg-blue-50">
+            🗂️ Department
+        </a>
+        <a [routerLink]="['/category']"  routerLinkActive="bg-blue-100 text-blue-700 font-bold"
+            class="flex items-center gap-2 px-4 py-2 rounded hover:bg-blue-50">
+           🏷️ Category
+        </a>
+    </nav>
+</aside>

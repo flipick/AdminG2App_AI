@@ -1,0 +1,233 @@
+<div class="bg-primary-100/60 rounded-lg border border-primary-300/80 grid grid-cols-[300px_1fr] overflow-hidden">
+    <!-- Left Panel -->
+    <div class="grid grid-rows-[auto_1fr_auto] bg-primary-50 border-r border-primary-300/80">
+        <div class="flex items-center border-b border-primary-300/80 py-2 px-3">
+            <h2 class="text-lg font-semibold">Course</h2>
+             @if(topics.length) {
+                <div class="ml-auto">
+                    <button class="btn-primary btn-sm" (click)="openPreview()">
+                        Preview
+                    </button>
+                </div>
+            }
+        </div>
+
+        <ul class="py-2 px-3 space-y-2 overflow-y-auto">
+            <li *ngFor="let topic of topics">
+                <!-- Topic -->
+                <div class="relative grid grid-cols-[20px_1fr_20px] gap-1.5 cursor-pointer p-1.5 rounded-lg hover:bg-primary-200"
+                    (click)="selectTopic(topic)" [ngClass]="{
+                        'bg-primary-200': selectedTopic?.topicId === topic.topicId && !selectedDetail,
+                        'text-red-500 bg-red-100': !topic.saved
+                    }">
+                    <span class="flex justify-center items-center h-5">📂</span>
+                    <span class="text-sm font-medium">{{ topic.topicTitle }}</span>
+                    <div class="flex justify-center items-center h-5">
+                        @if(!topic.saved) {
+                        <button (click)="deleteTopic(topic); $event.stopPropagation()"
+                            class="ml-auto text-red-500 hover:text-red-700 cursor-pointer">
+                            <svg class="w-5 h-5 stroke-red-500" viewBox="0 0 24 24" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <g id="Menu / Close_SM">
+                                    <path id="Vector" d="M16 16L12 12M12 12L8 8M12 12L16 8M12 12L8 16" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round" />
+                                </g>
+                            </svg>
+                        </button>
+                        }
+                    </div>
+                </div>
+
+                <!-- Details -->
+                <ul class="ml-6 mt-1 space-y-1">
+                    <li *ngFor="let detail of topic.topicDetails">
+                        <div class="relative grid grid-cols-[20px_1fr_20px] gap-1.5 cursor-pointer p-1.5 rounded-lg hover:bg-primary-200"
+                            (click)="selectDetail(detail, topic)" [ngClass]="{
+                                'bg-primary-200': selectedDetail?.topicDetailsId === detail.topicDetailsId,
+                                'text-red-500 bg-red-100': !detail.saved
+                            }">
+                            <span class="flex justify-center items-center aspect-square">📘</span>
+                            <span class="text-sm">{{ detail.topicDetailsTitle }}</span>
+                            <div class="flex justify-center items-center aspect-square">
+                                <button *ngIf="!detail.saved"
+                                    (click)="deleteDetail(detail, topic); $event.stopPropagation()"
+                                    class="ml-auto text-red-500 hover:text-red-700 cursor-pointer">
+                                    <svg class="w-5 h-5 stroke-red-500" viewBox="0 0 24 24" fill="none"
+                                        xmlns="http://www.w3.org/2000/svg">
+                                        <g id="Menu / Close_SM">
+                                            <path id="Vector" d="M16 16L12 12M12 12L8 8M12 12L16 8M12 12L8 16"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                        </g>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+
+        <!-- Action Buttons -->
+        <div class="py-3 px-3 flex items-center gap-3 border-t border-primary-300/80">
+            <button class="btn-outline grow shrink-0 basis-[0%] w-full max-w-full"
+                [disabled]="topics.length && !topics[topics.length -1].saved" (click)="addTopic()">
+                + Add Module
+            </button>
+
+            <button
+                class="btn-outline grow shrink-0 basis-[0%] w-full max-w-full disabled:opacity-60 disabled:cursor-not-allowed"
+                [disabled]="!selectedTopic || !selectedTopic.saved || 
+                         (selectedTopic.topicDetails.length && !selectedTopic.topicDetails[selectedTopic.topicDetails.length - 1].saved)"
+                (click)="addDetail()">
+                + Add Lesson
+            </button>
+        </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="overflow-y-auto">
+        <ng-container *ngIf="selectedDetail; else topicEdit">
+            <div class="border-b border-primary-300/80 py-2 px-3">
+                <h2 class="text-lg font-semibold"> {{selectedDetail.saved ? "Edit Lesson" : "Add Lesson"}}</h2>
+            </div>
+            <div class="grid gap-4 py-2 px-3">
+                <!-- Title -->
+                <div>
+                    <label class="form-label">Title</label>
+                    <input type="text" [(ngModel)]="selectedDetail.topicDetailsTitle" class="form-input" />
+                    <p *ngIf="lessonTitleError" class="text-sm text-red-500">{{ lessonTitleError }}</p>
+                </div>
+
+                <!-- Description -->
+                <div>
+                    <label class="form-label">Description</label>
+                    <textarea [(ngModel)]="selectedDetail.description" class="form-textarea"></textarea>
+                </div>
+
+                <!-- Content Type -->
+                <div>
+                    <label class="form-label">Content Type</label>
+                    <select [(ngModel)]="selectedDetail.contentType" class="form-select">
+                        <option *ngFor="let type of contentTypes" [value]="type.value">{{ type.label }}</option>
+                    </select>
+                </div>
+
+                <!-- File & Duration -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="form-label">{{ selectedDetail.contentType !==
+                            'externallink' ? 'Upload File' : 'Url' }}</label>
+                        <input type="file" #fileInput *ngIf="selectedDetail.contentType !== 'externallink'"
+                            class="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0
+                                    file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" (change)="onFileSelected($event, fileInput)" />
+                        <p *ngIf="fileError && selectedDetail.contentType !== 'externallink'"
+                            class="text-sm text-red-500">
+                            {{ fileError }}</p>
+
+                        <input type="url" [(ngModel)]="selectedDetail.url" placeholder="Enter URL"
+                            *ngIf="selectedDetail.contentType == 'externallink'"
+                            class="w-full border border-gray-300 rounded px-3 py-2" />
+                        <p *ngIf="urlError" class="text-sm text-red-500">{{ urlError }}</p>
+                    </div>
+
+                    <div>
+                        <label class="form-label">Estimated Duration</label>
+                        <select [(ngModel)]="selectedDetail.durationtype" class="form-select">
+                            <option *ngFor="let d of durations" [value]="d">{{ d }}</option>
+                        </select>
+
+                        <input *ngIf="selectedDetail.durationtype === 'Custom'" type="text" placeholder="HH:MM:SS"
+                            [(ngModel)]="customDuration" (blur)="validateCustomDuration()"
+                            class="w-full border border-gray-300 rounded px-3 py-2" />
+                        <p *ngIf="durationError" class="text-sm text-red-500">{{ durationError }}</p>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex items-center gap-4">
+                    <div>
+                        @if (errorMessage != '') {
+                        <div class="valid-feedback text-red-700">
+                            {{ errorMessage }}
+                        </div>
+                        }
+
+                        @if (successMessage != '') {
+                        <div class="valid-feedback text-green-700">
+                            {{ successMessage }}
+                        </div>
+                        }
+                    </div>
+                    <div class="ml-auto flex gap-4">
+                        <button class="btn-outline" (click)="cancelDetailEdit()">Cancel</button>
+                        <button class="btn-primary" (click)="saveDetail(selectedDetail)">Save Lesson</button>
+                    </div>
+                </div>
+            </div>
+        </ng-container>
+
+        <!-- Topic Edit -->
+        <ng-template #topicEdit>
+            <div *ngIf="selectedTopic; else noSelection">
+                <div class="border-b border-primary-300/80 py-2 px-3">
+                    <h2 class="text-lg font-semibold">{{selectedTopic.saved ? "Edit Module" : "Add Module"}}</h2>
+                </div>
+                <div class="grid gap-4 py-2 px-3">
+                    <div>
+                        <label class="form-label">Title</label>
+                        <input type="text" [(ngModel)]="selectedTopic.topicTitle" class="form-input" />
+                        <p *ngIf="topicTitleError" class="text-sm text-red-500">{{ topicTitleError }}</p>
+                    </div>
+
+                    <div>
+                        <label class="form-label">Description</label>
+                        <textarea [(ngModel)]="selectedTopic.description" class="form-textarea"></textarea>
+                    </div>
+
+                    <div class="flex items-center">
+                        <div>
+                            @if (errorMessage != '') {
+                            <div class="valid-feedback text-red-700">
+                                {{ errorMessage }}
+                            </div>
+                            }
+
+                            @if (successMessage != '') {
+                            <div class="valid-feedback text-green-700">
+                                {{ successMessage }}
+                            </div>
+                            }
+                        </div>
+                        <div class="ml-auto flex gap-4">
+                            <button class="btn-primary" (click)="saveTopic(selectedTopic)">Save
+                                Module</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <ng-template #noSelection>
+                <div class="h-full grid place-content-center">
+                    <p class="text-gray-500">Select a module or lesson to edit.</p>
+                </div>
+            </ng-template>
+        </ng-template>
+
+    </div>
+</div>
+<div class="flex items-center mt-4">
+    <div class="ml-auto">
+        <button (click)="NextPage()" class="btn-primary">
+            Next
+        </button>
+    </div>
+</div>
+
+<app-popup [config]="popupConfig" (closeEvent)="closePopup()">
+    <ng-container>
+        @if (popupConfig.popupFunctionalityType === 'preview') {
+            <app-toc-preview-popup #preview [curriculumId]="curriculumId" (close)="closePopup()">
+            </app-toc-preview-popup>
+        }
+    </ng-container>
+</app-popup>

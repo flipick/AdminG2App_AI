@@ -1,0 +1,54 @@
+    <div class="bg-primary-100/60 rounded-lg border border-primary-300/80 grid grid-cols-[200px_1fr] overflow-hidden h-[calc(100dvh-120px)]">
+      
+      <!-- Left Panel: Topics & Lessons -->
+      <div class="grid grid-rows-[auto_1fr_auto] bg-primary-50 border-r border-primary-300/80">
+        <div class="flex items-center border-b border-primary-300/80 py-2 px-3">
+          <h2 class="text-lg font-semibold">Course Content</h2>
+          <div class="ml-auto"></div>
+        </div>
+        @if(tocData) {
+          <ul class="py-2 px-3 overflow-y-auto">
+            <li class="border-b border-primary-300/50" *ngFor="let topic of tocData.topics; let i = index">
+              <div class="relative grid grid-cols-[1fr_30px] gap-1.5 cursor-pointer bg-primary-200 hover:bg-primary-200"
+                    [class.bg-primary-200]="activeTopicIndex === i"
+                    (click)="toggleTopic(i)">
+                  <span class="text-sm font-medium p-1.5">{{ topic.topicTitle }}</span>
+                  <span class="flex justify-center items-center w-7.5">
+                    <span class="w-5 h-5" [class.rotate-180]="activeTopicIndex === i">
+                      <svg class="w-full h-full stroke-gray-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M17 9.5L12 14.5L7 9.5" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                    </span>
+                  </span>
+              </div>
+              <ul *ngIf="activeTopicIndex === i" class="ml-4 mt-1 space-y-1 text-gray-700">
+                <li *ngFor="let lesson of topic.topicDetails"
+                    class="cursor-pointer px-2 py-1 rounded hover:bg-blue-100"
+                    [class.text-blue-700]="selectedLesson === lesson"
+                    (click)="openLesson(lesson)">
+                   {{ lesson.topicDetailsTitle }}
+                </li>
+              </ul>
+            </li>
+          </ul>
+        }
+      </div>
+
+      <!-- Right Panel: Lesson Preview -->
+      <div class="relative grid grid-rows-[auto_1fr]">
+        <div class="border-b border-primary-300/80 py-2 px-3">
+          <h2 class="text-lg font-semibold">Lesson Preview</h2>
+        </div>        
+        <ng-container *ngIf="selectedLessonUrl; else noLesson">
+          <div class="preview-container relative h-full overflow-hidden py-2 px-3">
+            <iframe [src]="selectedLessonUrl | safeUrl"
+                    class="absolute inset-0 w-full h-full"></iframe>
+          </div>
+        </ng-container>
+
+        <ng-template #noLesson>
+          <p class="text-gray-500 mt-4">Select a lesson to preview</p>
+        </ng-template>
+      </div>
+
+    </div>

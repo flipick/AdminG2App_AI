@@ -1,0 +1,36 @@
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <div class="grid gap-4">
+    <div>
+      <label class="form-label">Select Tenant <span class="text-red-500">*</span></label>
+      <select formControlName="tenantId" class="form-select w-full">
+        <option value="" disabled>Select Tenant</option>
+        <option *ngFor="let tenant of tenants" [value]="tenant.id">{{ tenant.name }}</option>
+      </select>
+      @if(form.get('tenantId')?.invalid && form.get('tenantId')?.touched) {
+        <p class="text-red-500 text-sm">Tenant is required.</p>
+      }
+    </div>
+
+    <div>
+      <label class="form-label">Category Name <span class="text-red-500">*</span></label>
+      <input
+        type="text"
+        formControlName="categoryName"
+        placeholder="Enter category name"
+        class="form-input w-full"
+      />
+      @if(form.get('categoryName')?.invalid && form.get('categoryName')?.touched) {
+        <p class="text-red-500 text-sm">Category name is required.</p>
+      }
+    </div>
+
+    <div>
+      <label class="form-label">Category Description</label>
+      <textarea
+        formControlName="description"
+        placeholder="Enter category description"
+        class="form-textarea w-full"
+      ></textarea>
+    </div>
+  </div>
+</form>

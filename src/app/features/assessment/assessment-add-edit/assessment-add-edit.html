@@ -1,0 +1,313 @@
+<div class="page-container">
+    <!-- Header -->
+    <header class="page-header">
+        <!-- Left Side: Title & Subtitle -->
+        <div>
+            <h1 class="heading-txt">Assessment Creation</h1>
+            <p class="content-text">Create MCQ quizzes and role-play assessments</p>
+        </div>
+
+        <!-- Right Side: Back Button -->
+        <div class="ml-auto">
+            <button type="button" (click)="goBackToList()" class="btn-outline group">
+                <span class="w-[1.5em]">
+                    <svg class="w-full h-full group-hover:animate-arrow-left" viewBox="0 0 24 24" fill="none"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <path d="M6 12H18M6 12L11 7M6 12L11 17" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                </span>
+                <span>Back to List</span>
+            </button>
+        </div>
+    </header>
+
+    <section class="page-content">
+        <div class="card">
+            <!--Tab -->
+            <div class="flex justify-between items-center border-b border-primary-300/80 mb-6">
+                <div class="flex">
+                    <button (click)="setActiveTab('assessmentsetup');resetMessage()" class="px-4 py-2 border-b-4"
+                        [ngClass]="{'font-medium text-primary-500  border-primary-500 cursor-default': activeTab === 'assessmentsetup', 'text-gray-600 border-transparent cursor-pointer': activeTab !== 'assessmentsetup' }">
+                        Assessment Setup
+                    </button>
+                    <button (click)="setActiveTab('contentbuilder');resetMessage()" class="px-4 py-2 border-b-4"
+                        [ngClass]="{'font-medium text-primary-500  border-primary-500 cursor-default': activeTab === 'contentbuilder', 'text-gray-600 border-transparent cursor-pointer': activeTab !== 'contentbuilder'}">
+                        Content Builder
+                    </button>
+                    <button (click)="setActiveTab('reviewandpublish');resetMessage()" class="px-4 py-2 border-b-4"
+                        [ngClass]="{'font-medium text-primary-500  border-primary-500 cursor-default': activeTab === 'reviewandpublish', 'text-gray-600 border-transparent cursor-pointer': activeTab !== 'reviewandpublish' }">
+                        Review & Publish
+                    </button>
+                </div>
+            </div>
+
+            <!-- Assessment Tab -->
+            @if (activeTab === 'assessmentsetup') {
+            @if (assessmentForm) {
+            <form [formGroup]="assessmentForm">
+                <div class="grid gap-8">
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div class="relative">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Assessment Title
+                                <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" formControlName="assessmentTitle" class="form-input" />
+                            @if (submitted && f['assessmentTitle'].errors) {
+                            <div class="text-red-500 text-sm mt-1">
+                                @if (f['assessmentTitle'].errors['required']) {
+                                <p>Please enter assessment title</p>
+                                }
+                            </div>
+                            }
+                        </div>
+
+                        <div class="relative">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Assessment Type
+                                <span class="text-red-500">*</span>
+                            </label>
+                            <select formControlName="assessmentTypeId" class="form-select">
+                                <option value="">Select Type</option>
+                                <option *ngFor="let assessment of assessmentTypes"
+                                    [value]="assessment.assessmentTypeId">{{
+                                    assessment.typeName }}</option>
+                            </select>
+                            @if(submitted && f['assessmentTypeId'].errors?.['required']) {
+                            <div class="text-red-500 text-sm mt-1">
+                                <p>Please select assessment type</p>
+                            </div>
+                            }
+                        </div>
+                        <div class="relative">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Category <span
+                                    class="text-red-500">*</span></label>
+                            <select formControlName="categoryId" class="form-select">
+                                <option value="">Select Category</option>
+                                @for (category of categories; track category.categoryId) {
+                                <option [value]="category.categoryId">{{ category.categoryName }}</option>
+                                }
+                            </select>
+                            @if (submitted && f['categoryId'].errors?.['required']) {
+                            <div class="text-red-500 text-sm mt-1">
+                                <p>Please enter category</p>
+                            </div>
+                            }
+                        </div>
+                        <div class="mt-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Subsription Month <span
+                                    class="text-red-500">*</span></label>
+                            <input type="number" formControlName="subscriptionMonth" class="form-input" min="1"
+                                max="999" />
+                            <!-- Required validation -->
+                            <div *ngIf="submitted && f['subscriptionMonth'].errors?.['required']"
+                                class="text-red-500 text-sm">
+                                Subscription Month is required
+                            </div>
+
+                            <!-- Max validation -->
+                            <div *ngIf="submitted && f['subscriptionMonth'].errors?.['max']"
+                                class="text-red-500 text-sm">
+                                Maximum 3 digits allowed
+                            </div>
+
+                            <!-- Min validation (optional) -->
+                            <div *ngIf="submitted && f['subscriptionMonth'].errors?.['min']"
+                                class="text-red-500 text-sm">
+                                Minimum value is 1
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        <textarea formControlName="description" class="form-textarea">
+                                        </textarea>
+                    </div>
+
+                    <div *ngIf="permissions.showTenantScope">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Tenant Scope</label>
+                        <div class="text-sm flex items-center gap-6">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="tenantScope" formControlName="tenantScope" value="all"
+                                    class="form-radio accent-primary-500" />
+                                <span>All Tenants</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="tenantScope" formControlName="tenantScope" value="specific"
+                                    class="form-radio accent-primary-500" />
+                                <span>Specific Tenants</span>
+                            </label>
+                        </div>
+
+                        <div class="mt-4" [hidden]="assessmentForm.get('tenantScope')?.value != 'specific'">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Select Tenant</label>
+                            <div class="flex flex-wrap gap-2 items-center">
+                                @for(tenant of tenants; track tenant.tenantId) {
+                                <label
+                                    class="relative flex justify-center items-center gap-2 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-full hover:border-primary-500 hover:text-primary-500 focus:text-primary-500 focus:ring-primary-500 focus:border-primary-500 has-checked:bg-primary-100 has-checked:border-primary-500 has-checked:text-primary-700 py-2 px-4 cursor-pointer">
+                                    <input type="checkbox" [(ngModel)]="tenant.isSelected" class="sr-only"
+                                        [ngModelOptions]="{ standalone: true }" name="tenant_{{tenant.tenantId}}" />
+                                    <span>{{ tenant.tenantName }}</span>
+                                </label>
+                                }
+                            </div>
+
+                            @if(submitted && !atLeastOneTenantSelected()) {
+                            <div class="text-red-500 text-sm mt-1">
+                                <p>Please select at least one tenant</p>
+                            </div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="text-sm grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Time Limit (minutes)</label>
+                            <input type="number" formControlName="timeLimitInMinutes" class="form-input" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Attempts Allowed</label>
+                            <input type="number" formControlName="attemptsAllowed" class="form-input" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Passing Score (%)</label>
+                            <input type="number" formControlName="passingScore" class="form-input" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">No Of Questions</label>
+                            <input type="number" formControlName="noOfQuestions" class="form-input" />
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-center">
+                    <div>
+                        @if (submitted && errorMessage != '') {
+                        <div class="valid-feedback text-red-700 mt-5">
+                            {{ errorMessage }}
+                        </div>
+                        }
+
+                        @if (submitted && successMessage != '') {
+                        <div class="valid-feedback text-green-700 mt-5">
+                            {{ successMessage }}
+                        </div>
+                        }
+                    </div>
+                    <div class="ml-auto">
+                        <button (click)="saveAssessment()" class="btn-primary">
+                            Next
+                        </button>
+                    </div>
+                </div>
+            </form>
+            }
+            }
+
+            <!-- Content Builder Tab -->
+            @if (activeTab === 'contentbuilder') {
+            <div>
+                @if (isRoleBasedAssessmentType(this.assessmentForm.get('assessmentTypeId')?.value)){
+                <!-- <app-role-play-scenario-builder [AssessmentId]="assessmentId"  (RedirectToReviewAndPublish)="redirectToReviewAndPublish()"></app-role-play-scenario-builder> -->
+                <app-role-play-scenario [AssessmentId]="assessmentId" [AssessmentName]="assessment.assessmentTitle"
+                    [NoOfQuestions]="this.assessmentForm.get('noOfQuestions')?.value"
+                    (RedirectToReviewAndPublish)="redirectToReviewAndPublish()"></app-role-play-scenario>
+                }
+                @else
+                {
+                <!-- <app-question-add-edit [AssessmentId]="assessmentId" [NoOfQuestions]="this.assessmentForm.get('noOfQuestions')?.value" (RedirectToReviewAndPublish)="redirectToReviewAndPublish()"></app-question-add-edit> -->
+                <div class="grid gap-4">
+                    @if(assessmentId > 0) {
+                    <div class="border-b border-gray-300 pb-4">
+                        <label class="form-label">Question Option: </label>
+                        <select id="questionOptionDrp" class="form-select w-auto min-w-xs"
+                            [disabled]="editMode || isAdaptiveAssessmentType(this.assessmentForm.get('assessmentTypeId')?.value)"
+                            [(ngModel)]="selectedOption" (change)="onOptionChanges($event)">
+                            <option value="UserGeneratedQuestion">Add Question</option>
+                            <option value="QuestionBank">Question Bank</option>
+                            <option value="AIQuestion">AI Question</option>
+                        </select>
+                    </div>
+                    }
+
+                    <!-- Conditionally displayed DIVs -->
+                    @if (selectedOption === 'UserGeneratedQuestion') {
+                    <app-question-add-edit [AssessmentId]="assessment.assessmentId"
+                        [NoOfQuestions]="assessment.noOfQuestions"
+                        (RedirectToReviewAndPublish)="redirectToReviewAndPublish()"></app-question-add-edit>
+                    }
+                    @else if (selectedOption === 'QuestionBank') {
+                    @if (isAdaptiveAssessmentType(this.assessmentForm.get('assessmentTypeId')?.value)){
+                    <app-adaptive-assessment [AssessmentId]="assessment.assessmentId" [QuestionOption]="selectedOption"
+                        [QuestionBankId]="assessment.questionOptionForId"
+                        (RedirectToReviewAndPublish)="redirectToReviewAndPublish()"
+                        [EditMode]="editMode"></app-adaptive-assessment>
+                    }
+                    @else{
+                    <app-question-qbank [AssessmentId]="assessment.assessmentId" [QuestionOption]="selectedOption"
+                        [QuestionBankId]="assessment.questionOptionForId" [NoOfQuestions]="assessment.noOfQuestions"
+                        (RedirectToReviewAndPublish)="redirectToReviewAndPublish()" [QuestionSelectionType]="assessment.questionSelectionType"
+                        [EditMode]="editMode"></app-question-qbank>
+                    }
+                    }
+                    @else if (selectedOption === 'AIQuestion') {
+                    <app-ai-generated-question-bank [AssessmentId]="assessment.assessmentId"
+                        [AssessmentName]="assessment.assessmentTitle" [QuestionOption]="selectedOption"
+                        [QuestionBankId]="assessment.questionOptionForId" [NoOfQuestions]="assessment.noOfQuestions"
+                        (RedirectToReviewAndPublish)="redirectToReviewAndPublish()"
+                        [EditMode]="editMode"></app-ai-generated-question-bank>
+                    }
+                </div>
+                }
+            </div>
+            }
+
+            <!-- Review and Publish Tab -->
+            @if (activeTab === 'reviewandpublish') {
+            <div class="grid gap-8">
+                @if (reviewandpublishForm) {
+                <form [formGroup]="reviewandpublishForm" (ngSubmit)="updateAssessment()">
+                    <div class="grid gap-4">
+                        @if (isAdaptiveAssessmentType(this.assessmentForm.get('assessmentTypeId')?.value) == false){
+                        <app-question-preview [assessmentId]="assessmentId"
+                            [assessmentTypeId]="this.assessmentForm.get('assessmentTypeId')?.value"
+                            [QuestionOption]="selectedOption"
+                            [QuestionBankId]="assessment.questionOptionForId"></app-question-preview>
+                        }
+                        <div class="grid md:grid-cols-6 gap-4">
+                            <div class="relative">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Publishing Options</label>
+                                <select formControlName="status" class="form-select">
+                                    <option value="draft">Save as Draft</option>
+                                    <option value="published">Published (Active)</option>
+                                    <option value="schedule">Schedule for Later</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center">
+                            <div>
+                                @if (submitted && errorMessage != '') {
+                                <div class="valid-feedback text-red-700 mt-5">
+                                    {{ errorMessage }}
+                                </div>
+                                }
+
+                                @if (submitted && successMessage != '') {
+                                <div class="valid-feedback text-green-700 mt-5">
+                                    {{ successMessage }}
+                                </div>
+                                }
+                            </div>
+                            <div class="ml-auto">
+                                <button (click)="updateAssessment()" class="btn-primary">
+                                    Save
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                }
+            </div>
+            }
+        </div>
+    </section>
+</div>

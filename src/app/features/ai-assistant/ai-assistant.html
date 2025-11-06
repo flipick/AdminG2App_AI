@@ -1,0 +1,71 @@
+<div class="page-container">
+    <!-- Header -->
+    <header class="page-header">
+        <!-- Left Side: Title & Subtitle -->
+        <div>
+            <h1 class="text-2xl font-bold text-indigo-700">AI Assistant</h1>
+            <p class="text-sm text-gray-600 mt-1">Get AI-powered insights and recommendations</p>
+        </div>
+    </header>
+    <section class="page-content">
+        <div class="flex flex-col gap-4 h-full">
+            <div class="flex items-center bg-white p-4 rounded-lg shadow-sm" *ngIf="permissions.showTenantDropdown">
+                <div class="flex items-end gap-4" >
+                    <div class="min-w-40">
+                        <label class="block mb-2 text-sm text-gray-900">Tenant</label>
+                        <select class="form-select" [(ngModel)]="selectedTenantId" (change)="filterByTenant(selectedTenantId)">
+                            @for(tenant of tenantlist; track $index) {
+                            <option [value]="tenant.tenantId">
+                                {{ tenant.tenantName }}
+                            </option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="grow shrink-0 basis-[0%] h-full max-full grid gap-4">
+                <!-- Chat Panel -->
+                <div class="bg-white border border-gray-300 rounded-lg flex flex-col overflow-hidden">
+                    <div id="chatMessages" class="flex-1 p-4 overflow-y-auto flex flex-col gap-3">
+                        <div *ngFor="let msg of messages" class="mb-4">
+                            <div *ngIf="msg.type === 'user'" class="flex justify-end">
+                                <div class="bg-gray-200 text-gray-800 px-4 py-2 rounded-xl shadow">
+                                    {{ msg.text }}
+                                </div>
+                            </div>
+
+                            <div *ngIf="msg.type === 'bot'" class="flex justify-start">
+                                <div class="bg-blue-50 text-gray-900 px-4 py-3 rounded-xl shadow w-full">
+                                    <div [innerHTML]="msg.text"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Chat Input -->
+                    <div class="flex gap-2 p-4 border-t border-gray-300">
+                        <input type="text" id="chatInput" placeholder="Ask a question..." [(ngModel)]="queryText"
+                            (keyup.enter)="sendMessage()"
+                            class="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        <button id="sendChatBtn" (click)="sendMessage()"
+                            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                            Send
+                        </button>
+                    </div>
+                </div>
+                <!-- <div class="bg-white border border-gray-300 rounded-lg p-4 flex flex-col overflow-hidden">
+                    <h3 class="font-semibold text-lg mb-3">Reference Materials</h3>
+                    <div id="knowledgeList" class="flex flex-col gap-2">
+                        <div class="p-2  bg-primary-100  rounded text-sm">
+                            <b>JavaScript const</b>
+                            <p>The const keyword creates a read-only reference to a value.</p>
+                        </div>    
+                        <div class="p-2  bg-primary-100  rounded text-sm">
+                            <b>ES6 Modules</b>
+                            <p>Modules allow you to break up code into separate files.</p>
+                        </div>             
+                    </div>
+                </div> -->
+            </div>
+        </div>
+    </section>
+</div>
