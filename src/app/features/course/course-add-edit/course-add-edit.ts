@@ -1,3 +1,4 @@
+import { CourseLearningGoals } from '../course-learning-goals/course-learning-goals';
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { AbstractControl, FormArray, FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -21,9 +22,18 @@ import { CourseTocAddEdit } from '../course-toc-add-edit/course-toc-add-edit';
 
 @Component({
   selector: 'app-course-add-edit',
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, ContentManagement, CourseSetting, CoursePackageList, CourseTocAddEdit],
+  imports: [
+    CommonModule, 
+    FormsModule, 
+    ReactiveFormsModule, 
+    ContentManagement, 
+    CourseSetting, 
+    CoursePackageList, 
+    CourseTocAddEdit,
+    CourseLearningGoals   // Added CourseLearningGoals to imports array
+  ],
   templateUrl: './course-add-edit.html',
-  styleUrl: './course-add-edit.css'
+  styleUrls: ['./course-add-edit.css']  // Changed styleUrl to styleUrls (plural)
 })
 export class CourseAddEdit implements OnInit {
   id?: number; submitted = false; successMessage = ''; errorMessage: string = '';
@@ -77,26 +87,28 @@ export class CourseAddEdit implements OnInit {
   }
 
   fieldDisable(){
-    this.CourseForm.get('isTableOfContent')?.valueChanges.subscribe(val => {
-      const isPackageCtrl = this.CourseForm.get('isPackage');
+    if (this.CourseForm) {  // Add this check to prevent errors
+      this.CourseForm.get('isTableOfContent')?.valueChanges.subscribe(val => {
+        const isPackageCtrl = this.CourseForm.get('isPackage');
 
-      if (val === true) {
-        isPackageCtrl?.setValue(false, { emitEvent: false }); // force to false
-        isPackageCtrl?.disable({ emitEvent: false });          // disable
-      } else {
-        isPackageCtrl?.enable({ emitEvent: false });           // enable back
-      }
-    });
-    this.CourseForm.get('isPackage')?.valueChanges.subscribe(val => {
-      const isTableOfContentCtrl = this.CourseForm.get('isTableOfContent');
+        if (val === true) {
+          isPackageCtrl?.setValue(false, { emitEvent: false }); // force to false
+          isPackageCtrl?.disable({ emitEvent: false });          // disable
+        } else {
+          isPackageCtrl?.enable({ emitEvent: false });           // enable back
+        }
+      });
+      this.CourseForm.get('isPackage')?.valueChanges.subscribe(val => {
+        const isTableOfContentCtrl = this.CourseForm.get('isTableOfContent');
 
-      if (val === true) {
-        isTableOfContentCtrl?.setValue(false, { emitEvent: false }); // force to false
-        isTableOfContentCtrl?.disable({ emitEvent: false });          // disable
-      } else {
-        isTableOfContentCtrl?.enable({ emitEvent: false });           // enable back
-      }
-    });
+        if (val === true) {
+          isTableOfContentCtrl?.setValue(false, { emitEvent: false }); // force to false
+          isTableOfContentCtrl?.disable({ emitEvent: false });          // disable
+        } else {
+          isTableOfContentCtrl?.enable({ emitEvent: false });           // enable back
+        }
+      });
+    }
   }
 
   setForm(course?: ICourse) {
@@ -117,11 +129,13 @@ export class CourseAddEdit implements OnInit {
       subscriptionMonth: [course?.subscriptionMonth || 0, [Validators.required, Validators.min(1),  Validators.max(999)]]
     });
     this.loadTenants(course?.courseTenants || []);
+    this.fieldDisable();  // Call fieldDisable after form is created
   }
 
   setActiveTab(tab: string): void {
     this.activeTab = tab;
   }
+  
   resetMessage() {
     this.successMessage = ''; this.errorMessage = '';
   }
@@ -138,6 +152,7 @@ export class CourseAddEdit implements OnInit {
       }
     })
   }
+  
   getDifficultyLevels(): void {
     this.difficultyLevelService.getDifficultyLevels().subscribe({
       next: (res: any) => {
@@ -185,8 +200,10 @@ export class CourseAddEdit implements OnInit {
   saveCourse(): void {
     this.successMessage = ''; this.errorMessage = '';
     this.submitted = true;
-    this.CourseForm.get('enrollmentId')?.clearValidators();
-    this.CourseForm.get('enrollmentId')?.updateValueAndValidity();
+    if (this.CourseForm.get('enrollmentId')) {
+      this.CourseForm.get('enrollmentId')?.clearValidators();
+      this.CourseForm.get('enrollmentId')?.updateValueAndValidity();
+    }
     if (this.CourseForm.invalid || !this.atLeastOneTenantSelected()) {
       return;
     }
@@ -217,11 +234,11 @@ export class CourseAddEdit implements OnInit {
       categoryId: +formValues.categoryId || 0,
       difficultyLevelId: +formValues.difficultyLevelId || 0,
       courseTenants: selectedTenants,
-      status: this.course.status,
-      enrollmentId: this.course.enrollmentId,
-      isTrackLearnerProgess: this.course.isTrackLearnerProgess,
-      isTrackTimeSpent: this.course.isTrackTimeSpent,
-      isTrackAssessmentScores: this.course.isTrackAssessmentScores,
+      status: this.course?.status,
+      enrollmentId: this.course?.enrollmentId,
+      isTrackLearnerProgess: this.course?.isTrackLearnerProgess,
+      isTrackTimeSpent: this.course?.isTrackTimeSpent,
+      isTrackAssessmentScores: this.course?.isTrackAssessmentScores,
       isPackage: this.editMode ? this.course.isPackage : formValues.isPackage,
       isTableOfContent: this.editMode ? this.course.isTableOfContent : formValues.isTableOfContent
     };
@@ -264,7 +281,12 @@ export class CourseAddEdit implements OnInit {
     });
   }
 
-  redirectToSetting() {
+  // Add redirectToLearningGoals method
+  redirectToLearningGoals(): void {
+    this.setActiveTab("learningGoals");
+  }
+
+  redirectToSetting(): void {
     this.setActiveTab("settings");
   }
 
@@ -272,21 +294,17 @@ export class CourseAddEdit implements OnInit {
     this.router.navigate(['course-list']);
   }
 
-  onImgError(event: Event) {
+  onImgError(event: Event): void {
     const target = event.target as HTMLImageElement;
     target.src = `${environment.contentFolder}` + '/undraw_teaching.svg';
   }
-  generateThumbnail() {
+  
+  generateThumbnail(): void {
     const formValues = this.CourseForm.value;
     if (formValues.thumbnailType != "generate" || formValues.courseName == "") {
       return;
     }
-    // var payload: IFreepikImageRequest = {
-    //   prompt: formValues.courseName + " " + formValues.description,
-    //   negativePrompt: '',
-    //   numImages:1,
-    //   size: "landscape_16_9"
-    // }
+    
     var payload: IFreepikImageMysticRequest = {
       prompt: formValues.courseName + " " + formValues.description,
       size: "widescreen_16_9",

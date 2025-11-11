@@ -41,6 +41,10 @@
                             [ngClass]="{'font-medium text-blue-700  border-blue-600 cursor-default': activeTab === 'contentManagement', 'text-gray-600 border-transparent cursor-pointer': activeTab !== 'contentManagement'}">
                             Content Management
                         </button>
+                        <button (click)="setActiveTab('learningGoals');resetMessage()" class="px-4 py-2 border-b-4"
+                            [ngClass]="{'font-medium text-blue-700  border-blue-600 cursor-default': activeTab === 'learningGoals', 'text-gray-600 border-transparent cursor-pointer': activeTab !== 'learningGoals' }">
+                            Learning Goals
+                        </button>
                         <button (click)="setActiveTab('settings');resetMessage()" class="px-4 py-2 border-b-4"
                             [ngClass]="{'font-medium text-blue-700  border-blue-600 cursor-default': activeTab === 'settings', 'text-gray-600 border-transparent cursor-pointer': activeTab !== 'settings' }">
                             Settings & Publishing
@@ -324,19 +328,27 @@
                 @if (CourseForm.get('isTableOfContent')?.value === true) {
                 <app-course-toc-add-edit [courseId]="id ?? 0" [course]="course"
                     [curriculumId]="CourseForm.get('curriculumSectionId')?.value"
-                    (RedirectToSetting)="redirectToSetting()">
+                    (RedirectToSetting)="redirectToLearningGoals()">
                 </app-course-toc-add-edit>
                 }
                 @else if (CourseForm.get('isPackage')?.value === false && CourseForm.get('isTableOfContent')?.value ===
                 false) {
-                <app-content-management [courseId]="id ?? 0" (RedirectToSetting)="redirectToSetting()">
+                <app-content-management [courseId]="id ?? 0" (RedirectToSetting)="redirectToLearningGoals()">
                 </app-content-management>
                 }
                 @else {
-                <app-course-package-list [packageId]="id ?? 0" (RedirectToSetting)="redirectToSetting()">
+                <app-course-package-list [packageId]="id ?? 0" (RedirectToSetting)="redirectToLearningGoals()">
                 </app-course-package-list>
                 }
                 }
+
+                @if (activeTab === 'learningGoals') {
+                <app-course-learning-goals [courseId]="id ?? 0" 
+                    (onPrevious)="setActiveTab('contentManagement')"
+                    (onNext)="setActiveTab('settings')">
+                </app-course-learning-goals>
+                }
+
                 @if (activeTab === 'settings') {
                 <app-course-setting [courseId]="id ?? 0"></app-course-setting>
                 }
