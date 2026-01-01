@@ -219,10 +219,57 @@
 
         <!-- Suggested Courses in Card -->
         <div class="card-courses" *ngIf="roleTool.suggestedCourses && roleTool.suggestedCourses.length > 0">
-          <h6 class="card-courses-title">📚 Suggested Courses:</h6>
+          <h6 class="card-courses-title">📚 AI Suggested Courses:</h6>
           <div class="card-course-item" *ngFor="let course of roleTool.suggestedCourses">
             <span class="card-course-name">{{ course.courseName }}</span>
             <span class="card-course-meta">{{ course.level }} • {{ course.estimatedHours }}h</span>
+          </div>
+        </div>
+
+        <!-- Linked LMS Courses -->
+        <div class="linked-courses-section">
+          <div class="linked-courses-header">
+            <h6 class="linked-courses-title">
+              📖 LMS Courses 
+              <span class="course-count-badge" [ngClass]="{'has-courses': getCourseCount(roleTool.tool.toolName) > 0}">
+                {{ getCourseCount(roleTool.tool.toolName) }}
+              </span>
+            </h6>
+          </div>
+          
+          <!-- List of linked courses -->
+          <div class="linked-courses-list" *ngIf="getCourseCount(roleTool.tool.toolName) > 0">
+            <div class="linked-course-item" *ngFor="let course of getCoursesForTool(roleTool.tool.toolName)">
+              <div class="linked-course-info">
+                <span class="linked-course-name">{{ course.courseName }}</span>
+                <span class="linked-course-meta">{{ course.courseType }} • {{ course.duration }}</span>
+              </div>
+              <div class="linked-course-actions">
+                <button class="btn-view-course" (click)="viewCourse(course.courseId)" title="View Course">👁️</button>
+                <button class="btn-unlink-course" (click)="unlinkCourse(roleTool.tool.toolName, course.courseId)" title="Unlink">✕</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- No courses message -->
+          <div class="no-courses-message" *ngIf="getCourseCount(roleTool.tool.toolName) === 0">
+            <span>No courses linked yet</span>
+          </div>
+          
+          <!-- Course action buttons -->
+          <div class="course-action-buttons">
+            <button 
+              class="btn-link-course"
+              (click)="openLinkCourseModal(roleTool.tool.toolName)"
+              title="Link existing course">
+              🔗 Link Course
+            </button>
+            <button 
+              class="btn-create-course"
+              (click)="launchVideoStudio(roleTool.tool)"
+              title="Create new course in Video Studio">
+              🎬 Create in Video Studio
+            </button>
           </div>
         </div>
         
@@ -413,6 +460,66 @@
           (click)="saveTool()"
           [disabled]="isLoading || (!selectedToolId && !newTool.toolName)">
           {{ isLoading ? 'Saving...' : (editingRoleToolId ? 'Update' : 'Add Tool') }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Link Course Modal -->
+  <div class="link-course-overlay" *ngIf="showLinkCourseModal">
+    <div class="link-course-modal">
+      <div class="link-course-header">
+        <h4>Link Course to {{ linkingToolName }}</h4>
+        <button class="btn-close" (click)="closeLinkCourseModal()">×</button>
+      </div>
+      
+      <div class="link-course-body">
+        <div class="form-group">
+          <label class="form-label">Select Course from LMS</label>
+          
+          <div class="loading-courses" *ngIf="isLoadingCourses">
+            <span class="spinner"></span> Loading courses...
+          </div>
+          
+          <div class="course-select-list" *ngIf="!isLoadingCourses">
+            <div 
+              class="course-select-item"
+              *ngFor="let course of availableCourses"
+              [class.selected]="selectedCourseId === course.courseId"
+              (click)="selectedCourseId = course.courseId">
+              <div class="course-select-radio">
+                <span class="radio-dot" *ngIf="selectedCourseId === course.courseId"></span>
+              </div>
+              <div class="course-select-info">
+                <span class="course-select-name">{{ course.courseName }}</span>
+                <span class="course-select-meta">{{ course.courseType }} • {{ course.duration }}</span>
+              </div>
+            </div>
+            
+            <div class="no-courses-available" *ngIf="availableCourses.length === 0">
+              No courses available. Create one in Video Studio first.
+            </div>
+          </div>
+        </div>
+        
+        <div class="or-divider">
+          <span>or</span>
+        </div>
+        
+        <button 
+          class="btn-create-new-course"
+          (click)="closeLinkCourseModal(); launchVideoStudio({toolName: linkingToolName, category: '', level: 'Level 3', levelNumber: 3, description: '', keywords: [], estimatedHours: 40, toolId: 0})">
+          🎬 Create New Course in Video Studio
+        </button>
+      </div>
+      
+      <div class="link-course-footer">
+        <button class="btn-cancel" (click)="closeLinkCourseModal()">Cancel</button>
+        <button 
+          class="btn-save"
+          (click)="linkCourseToTool()"
+          [disabled]="!selectedCourseId">
+          Link Course
         </button>
       </div>
     </div>

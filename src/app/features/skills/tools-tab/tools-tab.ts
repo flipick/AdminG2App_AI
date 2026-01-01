@@ -55,6 +55,39 @@ export interface AISuggestedCourse {
   learningObjectives: string[];
 }
 
+export interface CourseForTool {
+  courseId: number;
+  courseName: string;
+  courseType: string;
+  duration: string;
+  requiredLevel: string;
+  isPrimary: boolean;
+  thumbnailUrl: string;
+  status: string;
+}
+
+export interface CourseTool {
+  courseToolId: number;
+  courseId: number;
+  toolName: string;
+  toolCategory: string;
+  requiredLevel: string;
+  requiredLevelNumber: number;
+  isPrimary: boolean;
+  keywords: string[];
+  estimatedHours: number;
+}
+
+export interface LTILaunchParams {
+  tenantId: number;
+  userId: number;
+  toolName: string;
+  toolCategory: string;
+  requiredLevel: string;
+  keywords: string;
+  estimatedHours: number;
+}
+
 // ============================================
 // CONSTANTS
 // ============================================
@@ -163,6 +196,17 @@ export class ToolsTab implements OnInit {
   private apiUrl: string;
   private apiKey: string;
   private model: string;
+  
+  // Course Management
+  toolCourses: Map<string, CourseForTool[]> = new Map();
+  showLinkCourseModal: boolean = false;
+  linkingToolName: string = '';
+  availableCourses: any[] = [];
+  selectedCourseId: number | null = null;
+  isLoadingCourses: boolean = false;
+  
+  // Video Studio LTI
+  videoStudioUrl: string = 'https://video.flipick.com';
   
   constructor(private skillService: SkillService) {
     this.apiUrl = (environment as any).claudeApiUrl || 'https://api.anthropic.com/v1/messages';
@@ -694,5 +738,210 @@ Make the content specific to the ${this.selectedSector} sector and ${this.select
   
   getRequiredCount(): number {
     return this.roleTools.filter(rt => rt.isRequired).length;
+  }
+  
+  // ============================================
+  // COURSE MANAGEMENT
+  // ============================================
+  
+  getCoursesForTool(toolName: string): CourseForTool[] {
+    return this.toolCourses.get(toolName) || [];
+  }
+  
+  getCourseCount(toolName: string): number {
+    return this.getCoursesForTool(toolName).length;
+  }
+  
+  loadCoursesForTool(toolName: string): void {
+    // Check localStorage first (demo purposes)
+    const storageKey = `toolCourses_${toolName}`;
+    const stored = localStorage.getItem(storageKey);
+    if (stored) {
+      try {
+        this.toolCourses.set(toolName, JSON.parse(stored));
+      } catch (e) {
+        this.toolCourses.set(toolName, []);
+      }
+    }
+    
+    // TODO: Replace with actual API call when ready
+    // this.courseService.getCoursesByTool(toolName).subscribe(...)
+  }
+  
+  loadAllToolCourses(): void {
+    this.roleTools.forEach(rt => {
+      this.loadCoursesForTool(rt.tool.toolName);
+    });
+  }
+  
+  openLinkCourseModal(toolName: string): void {
+    this.linkingToolName = toolName;
+    this.showLinkCourseModal = true;
+    this.selectedCourseId = null;
+    this.loadAvailableCourses();
+  }
+  
+  closeLinkCourseModal(): void {
+    this.showLinkCourseModal = false;
+    this.linkingToolName = '';
+    this.availableCourses = [];
+  }
+  
+  loadAvailableCourses(): void {
+    this.isLoadingCourses = true;
+    
+    // TODO: Replace with actual API call
+    // For now, simulate with mock data
+    setTimeout(() => {
+      this.availableCourses = [
+        { courseId: 1, courseName: 'Introduction to Programming', courseType: 'SCORM', duration: '10 hours' },
+        { courseId: 2, courseName: 'Web Development Basics', courseType: 'SCORM', duration: '15 hours' },
+        { courseId: 3, courseName: 'Advanced Concepts', courseType: 'PDF', duration: '8 hours' },
+      ];
+      this.isLoadingCourses = false;
+    }, 500);
+    
+    // Actual implementation:
+    // this.courseService.getAllCourses().subscribe({
+    //   next: (res) => {
+    //     this.availableCourses = res.result || [];
+    //     this.isLoadingCourses = false;
+    //   },
+    //   error: () => this.isLoadingCourses = false
+    // });
+  }
+  
+  linkCourseToTool(): void {
+    if (!this.selectedCourseId || !this.linkingToolName) return;
+    
+    const selectedCourse = this.availableCourses.find(c => c.courseId === this.selectedCourseId);
+    if (!selectedCourse) return;
+    
+    const courseForTool: CourseForTool = {
+      courseId: selectedCourse.courseId,
+      courseName: selectedCourse.courseName,
+      courseType: selectedCourse.courseType,
+      duration: selectedCourse.duration,
+      requiredLevel: 'Level 3',
+      isPrimary: this.getCourseCount(this.linkingToolName) === 0,
+      thumbnailUrl: '',
+      status: 'Active'
+    };
+    
+    // Add to local map
+    const existing = this.toolCourses.get(this.linkingToolName) || [];
+    existing.push(courseForTool);
+    this.toolCourses.set(this.linkingToolName, existing);
+    
+    // Save to localStorage (demo)
+    const storageKey = `toolCourses_${this.linkingToolName}`;
+    localStorage.setItem(storageKey, JSON.stringify(existing));
+    
+    // TODO: Call API to persist
+    // this.courseService.mapToolToCourse({
+    //   courseId: selectedCourse.courseId,
+    //   toolName: this.linkingToolName,
+    //   ...
+    // }).subscribe(...);
+    
+    this.saveMessage = `Linked "${selectedCourse.courseName}" to ${this.linkingToolName}`;
+    setTimeout(() => this.saveMessage = '', 3000);
+    
+    this.closeLinkCourseModal();
+  }
+  
+  unlinkCourse(toolName: string, courseId: number): void {
+    if (!confirm('Remove this course from the tool?')) return;
+    
+    const existing = this.toolCourses.get(toolName) || [];
+    const filtered = existing.filter(c => c.courseId !== courseId);
+    this.toolCourses.set(toolName, filtered);
+    
+    // Save to localStorage
+    const storageKey = `toolCourses_${toolName}`;
+    localStorage.setItem(storageKey, JSON.stringify(filtered));
+    
+    // TODO: Call API
+    // this.courseService.removeToolMapping(courseToolId).subscribe(...);
+    
+    this.saveMessage = 'Course unlinked successfully';
+    setTimeout(() => this.saveMessage = '', 3000);
+  }
+  
+  // ============================================
+  // VIDEO STUDIO LTI LAUNCH
+  // ============================================
+  
+  launchVideoStudio(tool: Tool): void {
+    // Build LTI launch form
+    const launchParams: LTILaunchParams = {
+      tenantId: parseInt(this.selectedTenantId) || 0,
+      userId: 0, // Get from auth service
+      toolName: tool.toolName,
+      toolCategory: tool.category,
+      requiredLevel: tool.level,
+      keywords: tool.keywords?.join(',') || '',
+      estimatedHours: tool.estimatedHours || 40
+    };
+    
+    // For now, open Video Studio with query params (simple approach)
+    // Full LTI implementation would use a form POST with OAuth signature
+    const params = new URLSearchParams({
+      tool_name: launchParams.toolName,
+      tool_category: launchParams.toolCategory,
+      required_level: launchParams.requiredLevel,
+      keywords: launchParams.keywords,
+      estimated_hours: launchParams.estimatedHours.toString(),
+      return_url: window.location.href
+    });
+    
+    const launchUrl = `${this.videoStudioUrl}/create?${params.toString()}`;
+    
+    // Open in new window
+    window.open(launchUrl, '_blank', 'width=1200,height=800');
+    
+    // TODO: For full LTI, create a form and submit with OAuth:
+    // this.submitLTILaunch(launchParams);
+  }
+  
+  // Full LTI Launch (when backend is ready)
+  private submitLTILaunch(params: LTILaunchParams): void {
+    // Create hidden form
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `${this.videoStudioUrl}/lti/launch`;
+    form.target = '_blank';
+    
+    // Add LTI parameters
+    const ltiParams: Record<string, string> = {
+      'lti_message_type': 'ContentItemSelectionRequest',
+      'lti_version': 'LTI-1p0',
+      'content_item_return_url': `${window.location.origin}/api/LTI/ContentItemReturn`,
+      'accept_media_types': 'application/vnd.ims.lti.v1.ltilink',
+      'accept_presentation_document_targets': 'window',
+      'custom_tool_name': params.toolName,
+      'custom_tool_category': params.toolCategory,
+      'custom_required_level': params.requiredLevel,
+      'custom_keywords': params.keywords,
+      'custom_estimated_hours': params.estimatedHours.toString(),
+      // OAuth params would be added by backend
+    };
+    
+    Object.entries(ltiParams).forEach(([key, value]) => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = key;
+      input.value = value;
+      form.appendChild(input);
+    });
+    
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+  }
+  
+  viewCourse(courseId: number): void {
+    // Open course in LMS
+    window.open(`/courses/${courseId}`, '_blank');
   }
 }
