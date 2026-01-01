@@ -1,0 +1,16 @@
+/* Add-Edit Learner Styles */
+
+/* Loading state for dropdowns */
+.form-select.opacity-50 {
+  cursor: wait;
+}
+
+/* Custom role indicator styling */
+option[value]:not([value=""]) {
+  padding: 0.5rem;
+}
+
+/* Warning message for no roles */
+.text-amber-600 {
+  color: #d97706;
+}

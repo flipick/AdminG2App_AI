@@ -4,6 +4,7 @@ import { FormsModule, ReactiveFormsModule, FormGroup, FormBuilder, Validators } 
 import { LearnerService } from '../../services/learner-service';
 import { TenantService } from '../../services/tenant-service';
 import { PermissionService } from '../../services/permission-service';
+import { SkillService } from '../../services/skill-services';
 import { getTenantId } from '../../services/utility';
 
 @Component({
@@ -21,15 +22,17 @@ export class AddEditLearner implements OnInit {
   learnerForm!: FormGroup;
   tenants: any[] = [];
   departments: any[] = [];
-  roles: any[] = [];   // ✅ store roles
+  roles: any[] = [];   // Store all tenant-assigned roles (standard + custom)
   permissions: any;
   selectedTenantId: string = '';
+  isLoadingRoles: boolean = false;
 
   constructor(
     private fb: FormBuilder,
     private learnerServices: LearnerService,
     private tenantService: TenantService,
-    private permissionService: PermissionService
+    private permissionService: PermissionService,
+    private skillService: SkillService  // Added SkillService
   ) {}
 
   ngOnInit(): void {
@@ -41,7 +44,7 @@ export class AddEditLearner implements OnInit {
     this.loadDepartments(Number(this.selectedTenantId));
 
     if (this.selectedTenantId) {
-      this.loadRoles(Number(this.selectedTenantId)); // ✅ load roles for tenant
+      this.loadRoles(this.selectedTenantId); // Load all assigned roles for tenant
     }
 
     if (this.learnerId > 0) {
@@ -49,7 +52,7 @@ export class AddEditLearner implements OnInit {
     }
   }
 
-  // ✅ Build form with roleId
+  // Build form with roleId
   buildForm(): void {
     this.learnerForm = this.fb.group({
       firstName: ['', Validators.required],
@@ -58,41 +61,70 @@ export class AddEditLearner implements OnInit {
       tenantId: ['', Validators.required],
       password: ['', Validators.required],
       department: ['', Validators.required],
-      roleId: ['', Validators.required] // ✅ added
+      roleId: ['', Validators.required]
     });
   }
 
-loadRoles(tenantId: number) {
-  if (!tenantId) {
-    this.roles = [];  // ✅ clear roles when no tenant
-    return;
+  /**
+   * Load ALL roles assigned to tenant (standard SSF roles + custom roles)
+   * Uses SkillService.getTenantJobRoles instead of LearnerService.getRolesByTenant
+   */
+  loadRoles(tenantId: string) {
+    if (!tenantId) {
+      this.roles = [];
+      return;
+    }
+
+    this.isLoadingRoles = true;
+
+    // Use SkillService to get ALL assigned roles (standard + custom)
+    const request = {
+      sector: '',      // Empty to get all sectors
+      track: '',       // Empty to get all tracks
+      tenantId: tenantId
+    };
+
+    this.skillService.getTenantJobRoles(request).subscribe({
+      next: (res: any) => {
+        this.isLoadingRoles = false;
+        
+        if (res && res.statusCode === 200 && res.result && res.result.length > 0) {
+          // Map roles - API returns jobRole/jobRoleName, jobRoleId
+          this.roles = res.result.map((r: any) => ({
+            id: r.jobRoleId,
+            name: r.jobRoleName || r.jobRole || 'Unknown Role',
+            sector: r.sectorName || r.sector || '',
+            track: r.trackName || r.track || '',
+            isCustom: r.addedByUser === 1
+          }));
+
+          // Sort: Standard roles first, then custom roles, alphabetically within each group
+          this.roles.sort((a, b) => {
+            if (a.isCustom !== b.isCustom) {
+              return a.isCustom ? 1 : -1; // Standard roles first
+            }
+            return a.name.localeCompare(b.name);
+          });
+
+          console.log('Loaded roles for tenant:', this.roles.length, 'roles');
+        } else {
+          this.roles = [];
+          console.log('No roles found for tenant');
+        }
+      },
+      error: (err: any) => {
+        this.isLoadingRoles = false;
+        console.error('Failed to load roles:', err);
+        this.roles = [];
+      }
+    });
   }
 
-  this.learnerServices.getRolesByTenant(tenantId).subscribe({
-    next: (res: any) => {
-      if (res && res.result && res.result.length > 0) {
-        this.roles = res.result.map((r: any) => ({
-          id: r.jobRoleId,
-          name: r.jobRole
-        }));
-      } else {
-        this.roles = [];  // ✅ clear when no roles found
-      }
-    },
-    error: (err: any) => {
-      console.error('Failed to load roles:', err);
-      this.roles = [];  // ✅ clear on error as well
-    }
-  });
-}
-
-
-
-  // ✅ Handle tenant change
+  // Handle tenant change
   onTenantChange(event: any) {
     const selectedTenantId = event.target.value;
-    this.learnerForm.get('roleId')?.reset(''); // reset to blank
-    this.learnerForm.get('department')?.reset(''); // reset
+    this.learnerForm.get('roleId')?.reset('');
+    this.learnerForm.get('department')?.reset('');
     this.loadRoles(selectedTenantId);
     this.loadDepartments(selectedTenantId);
   }
@@ -108,11 +140,11 @@ loadRoles(tenantId: number) {
             tenantId: Number(res.result.tenantId) || '',
             password: res.result.password || '',
             department: res.result.departmentId || '',
-            roleId: res.result.roleId || ''  // ✅ patch roleId
+            roleId: res.result.roleId || ''
           });
 
           if (res.result.tenantId) {
-            this.loadRoles(res.result.tenantId);
+            this.loadRoles(res.result.tenantId.toString());
           }
         }
       },
@@ -122,30 +154,29 @@ loadRoles(tenantId: number) {
     });
   }
 
- loadDepartments(tenantId: number) {
-  if (!tenantId) {
-    this.departments = [];  // ✅ clear when no tenant
-    return;
-  }
-
-  this.learnerServices.getDepartmentsByTenant(tenantId).subscribe({
-    next: (res: any) => {
-      if (res && res.result && res.result.length > 0) {
-        this.departments = res.result.map((dept: any) => ({
-          id: dept.departmentId,
-          name: dept.departmentName
-        }));
-      } else {
-        this.departments = [];  // ✅ clear when no departments found
-      }
-    },
-    error: (err: any) => {
-      console.error('Failed to load departments:', err);
-      this.departments = [];  // ✅ clear on error
+  loadDepartments(tenantId: number) {
+    if (!tenantId) {
+      this.departments = [];
+      return;
     }
-  });
-}
 
+    this.learnerServices.getDepartmentsByTenant(tenantId).subscribe({
+      next: (res: any) => {
+        if (res && res.result && res.result.length > 0) {
+          this.departments = res.result.map((dept: any) => ({
+            id: dept.departmentId,
+            name: dept.departmentName
+          }));
+        } else {
+          this.departments = [];
+        }
+      },
+      error: (err: any) => {
+        console.error('Failed to load departments:', err);
+        this.departments = [];
+      }
+    });
+  }
 
   loadTenants(): void {
     this.tenantService.getTenants().subscribe({
@@ -191,7 +222,7 @@ loadRoles(tenantId: number) {
       tenantId: tenantIdValue,
       password: this.learnerForm.value.password,
       departmentId: this.learnerForm.value.department,
-      roleId: this.learnerForm.value.roleId, // ✅ send roleId
+      roleId: this.learnerForm.value.roleId,
       phoneNumber: '',
       status: '1',
       flag: 0,

@@ -77,49 +77,47 @@
           <label class="form-label">
             Department <span class="text-red-500">*</span>
           </label>
-        <select formControlName="department" class="form-select">
-          <option value="">Select department</option>
-          @for (dept of departments; track dept.id) {
-            <option [value]="dept.id">{{ dept.name }}</option>
-          }
-        </select>
+          <select formControlName="department" class="form-select">
+            <option value="">Select department</option>
+            @for (dept of departments; track dept.id) {
+              <option [value]="dept.id">{{ dept.name }}</option>
+            }
+          </select>
 
           @if(learnerForm.get('department')?.invalid && learnerForm.get('department')?.touched) {
             <p class="text-red-500 text-sm mt-1">Please select a department.</p>
           }
         </div>
       
+        <!-- Role Dropdown - Shows ALL assigned roles (standard + custom) -->
         <div>
           <label class="form-label">
             Role <span class="text-red-500">*</span>
           </label>
-          <select formControlName="roleId" class="form-select">
-            <option value="" disabled selected>Select role</option>
-            @for (role of roles; track role.id) {
-              <option [value]="role.id">{{ role.name }}</option>
+          <select formControlName="roleId" class="form-select" [class.opacity-50]="isLoadingRoles">
+            <option value="" disabled selected>
+              {{ isLoadingRoles ? 'Loading roles...' : 'Select role' }}
+            </option>
+            @if(!isLoadingRoles) {
+              @for (role of roles; track role.id) {
+                <option [value]="role.id">
+                  {{ role.name }}{{ role.isCustom ? ' (Custom)' : '' }}
+                </option>
+              }
             }
           </select>
           
           @if(learnerForm.get('roleId')?.invalid && learnerForm.get('roleId')?.touched) {
-            <p class="text-red-500 text-sm mt-1">
-              Please select a role.
+            <p class="text-red-500 text-sm mt-1">Please select a role.</p>
+          }
+          
+          @if(!isLoadingRoles && roles.length === 0 && learnerForm.get('tenantId')?.value) {
+            <p class="text-amber-600 text-xs mt-1">
+              No roles assigned to this tenant. Go to Skills Framework to assign roles.
             </p>
-          }          
+          }
         </div>
       </div>
     </div>
-
-
-    <!-- Buttons -->
-    <!-- <div class="flex justify-end gap-4 mt-4">
-      <button type="button" (click)="cancel()"
-        class="px-6 py-2 border border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-50 transition-all">
-        Cancel
-      </button>
-      <button type="submit"
-        class="px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-all">
-        {{ learnerId > 0 ? 'Update' : 'Add' }} Employee
-      </button>
-    </div> -->
   </form>
 </div>

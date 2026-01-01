@@ -2,6 +2,7 @@ import { Component, OnInit, ViewChild, ElementRef, ViewChildren, QueryList } fro
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ToolsTab } from './tools-tab/tools-tab';
 
 // Services
 import { SkillService } from '../../services/skill-services';
@@ -49,7 +50,7 @@ type TabType = 'browse-roles' | 'custom-roles' | 'manage-skills' | 'tools';
 @Component({
   selector: 'app-skills',
   standalone: true,
-  imports: [CommonModule, FormsModule, AddSectorTrackRole],
+  imports: [CommonModule, FormsModule, AddSectorTrackRole, ToolsTab],
   templateUrl: './skills.html',
   styleUrls: ['./skills.css']
 })

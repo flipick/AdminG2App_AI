@@ -1,0 +1,420 @@
+<div class="tools-container">
+  
+  <!-- Filters -->
+  <div class="tools-filters">
+    <div class="filter-group">
+      <label class="filter-label">Sector</label>
+      <select class="filter-select" [(ngModel)]="selectedSector" (change)="onSectorChange()">
+        <option value="">Select Sector</option>
+        <option *ngFor="let sector of sectorData" [value]="sector.sectorName">
+          {{ sector.sectorName }}
+        </option>
+      </select>
+    </div>
+    
+    <div class="filter-group">
+      <label class="filter-label">Track</label>
+      <select class="filter-select" [(ngModel)]="selectedTrack" (change)="onTrackChange()" [disabled]="!selectedSector">
+        <option value="">Select Track</option>
+        <option *ngFor="let track of trackData" [value]="track.trackName">
+          {{ track.trackName }}
+        </option>
+      </select>
+    </div>
+    
+    <div class="filter-group filter-selected" *ngIf="selectedRole">
+      <label class="filter-label">Selected Role</label>
+      <div class="selected-role-display">
+        <span class="selected-role-name">{{ selectedRole }}</span>
+        <button class="btn-clear-role" (click)="clearSelectedRole()" title="Clear selection">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 1: Role Selection (when no role selected) -->
+  <div class="role-selection-section" *ngIf="!selectedRole && selectedTrack">
+    <div class="section-header">
+      <h3 class="section-title">Select a Role</h3>
+      <span class="role-count-badge">{{ filteredRoleData.length }} roles found</span>
+    </div>
+    
+    <div class="role-cards-grid">
+      <div 
+        class="role-card"
+        *ngFor="let role of filteredRoleData"
+        (click)="selectRole(role)">
+        <h4 class="role-card-title">{{ role.jobRoleName }}</h4>
+        <p class="role-card-description">{{ role.jobRoleDescription?.slice(0, 100) }}{{ role.jobRoleDescription?.length > 100 ? '...' : '' }}</p>
+        <div class="role-card-footer">
+          <span class="click-hint">Click to select</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty State: No track selected -->
+  <div class="empty-state" *ngIf="!selectedTrack">
+    <div class="empty-icon">🛠️</div>
+    <h4>Select Sector & Track</h4>
+    <p>Use the filters above to browse available roles, then select one to manage its tools.</p>
+  </div>
+
+  <!-- Empty State: No roles in track -->
+  <div class="empty-state" *ngIf="selectedTrack && filteredRoleData.length === 0 && !selectedRole">
+    <div class="empty-icon">📭</div>
+    <h4>No Roles Found</h4>
+    <p>No roles available in this track. Try selecting a different track.</p>
+  </div>
+
+  <!-- STEP 2: Tools Management (when role is selected) -->
+  <div class="tools-management-section" *ngIf="selectedRole">
+    
+    <!-- Header -->
+    <div class="tools-header">
+      <div>
+        <h3 class="tools-title">Tools & Technologies</h3>
+        <p class="tools-subtitle">
+          Define required tools for <strong>{{ selectedRole }}</strong>
+        </p>
+      </div>
+      
+      <div class="tools-actions">
+        <button 
+          class="btn-ai-generate"
+          (click)="generateToolsWithAI()"
+          [disabled]="isGeneratingAI">
+          <span *ngIf="!isGeneratingAI">🤖 Generate with AI</span>
+          <span *ngIf="isGeneratingAI">
+            <span class="spinner"></span> Generating...
+          </span>
+        </button>
+        <button 
+          class="btn-primary"
+          (click)="openAddForm()">
+          + Add Tool
+        </button>
+      </div>
+    </div>
+
+    <!-- Success Message -->
+    <div class="alert-success" *ngIf="saveMessage">
+      {{ saveMessage }}
+    </div>
+
+    <!-- AI Error Message -->
+    <div class="alert-error" *ngIf="aiError">
+      {{ aiError }}
+    </div>
+
+    <!-- AI Suggestions Panel -->
+    <div class="ai-suggestions-panel" *ngIf="showAISuggestions && aiSuggestions.length > 0">
+      <div class="ai-panel-header">
+        <div>
+          <h4 class="ai-panel-title">🤖 AI-Generated Tool Suggestions</h4>
+          <p class="ai-panel-subtitle">
+            {{ aiSuggestions.length }} tools suggested for <strong>{{ selectedRole }}</strong>
+          </p>
+        </div>
+        <div class="ai-panel-actions">
+          <button class="btn-add-all" (click)="addAllSuggestions()">
+            ✓ Add All ({{ aiSuggestions.length }})
+          </button>
+          <button class="btn-close-panel" (click)="closeAISuggestions()">
+            ✕ Close
+          </button>
+        </div>
+      </div>
+      
+      <div class="ai-suggestions-grid">
+        <div class="ai-suggestion-card" *ngFor="let suggestion of aiSuggestions">
+          <div class="suggestion-header">
+            <div class="suggestion-icon">{{ getCategoryIcon(suggestion.category) }}</div>
+            <div class="suggestion-title-section">
+              <h5 class="suggestion-name">{{ suggestion.toolName }}</h5>
+              <span class="suggestion-category">{{ suggestion.category }}</span>
+            </div>
+            <div class="suggestion-level" [ngClass]="getLevelClass(suggestion.requiredLevel)">
+              {{ suggestion.requiredLevel }}
+            </div>
+          </div>
+          
+          <p class="suggestion-description">{{ suggestion.description }}</p>
+          
+          <div class="suggestion-keywords">
+            <span class="keyword-tag" *ngFor="let kw of suggestion.keywords?.slice(0, 4)">{{ kw }}</span>
+          </div>
+          
+          <div class="suggestion-meta">
+            <span class="meta-item">⏱️ {{ suggestion.estimatedHours }}h</span>
+            <span class="meta-item" *ngIf="suggestion.isRequired">
+              <span class="required-dot"></span> Required
+            </span>
+          </div>
+          
+          <!-- Suggested Courses -->
+          <div class="suggested-courses" *ngIf="suggestion.suggestedCourses && suggestion.suggestedCourses.length > 0">
+            <h6 class="courses-title">Suggested Courses:</h6>
+            <div class="course-chip" *ngFor="let course of suggestion.suggestedCourses">
+              <span class="course-name">{{ course.courseName }}</span>
+              <span class="course-meta">{{ course.level }} • {{ course.estimatedHours }}h</span>
+            </div>
+          </div>
+          
+          <button class="btn-add-suggestion" (click)="addSuggestedTool(suggestion)">
+            + Add to Role
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tools Summary -->
+    <div class="tools-summary" *ngIf="roleTools.length > 0">
+      <div class="summary-item">
+        <span class="summary-value">{{ roleTools.length }}</span>
+        <span class="summary-label">Tools</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-value">{{ getRequiredCount() }}</span>
+        <span class="summary-label">Required</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-value">{{ getTotalHours() }}h</span>
+        <span class="summary-label">Est. Learning</span>
+      </div>
+    </div>
+
+    <!-- Tool Cards Grid -->
+    <div class="tools-grid" *ngIf="roleTools.length > 0">
+      <div class="tool-card" *ngFor="let roleTool of roleTools">
+        <div class="tool-card-header">
+          <div class="tool-icon">{{ getCategoryIcon(roleTool.tool.category) }}</div>
+          <div class="tool-title-section">
+            <h4 class="tool-name">{{ roleTool.tool.toolName }}</h4>
+            <span class="tool-category">{{ roleTool.tool.category }}</span>
+          </div>
+          <div class="tool-level" [ngClass]="getLevelClass(roleTool.requiredLevel)">
+            {{ roleTool.requiredLevel }}
+          </div>
+        </div>
+        
+        <p class="tool-description">{{ roleTool.tool.description }}</p>
+        
+        <div class="tool-keywords">
+          <span class="keyword-tag" *ngFor="let keyword of roleTool.tool.keywords?.slice(0, 4)">
+            {{ keyword }}
+          </span>
+          <span class="keyword-more" *ngIf="roleTool.tool.keywords && roleTool.tool.keywords.length > 4">
+            +{{ roleTool.tool.keywords.length - 4 }} more
+          </span>
+        </div>
+        
+        <div class="tool-meta">
+          <span class="meta-item" *ngIf="roleTool.isRequired">
+            <span class="required-dot"></span> Required
+          </span>
+          <span class="meta-item">
+            ⏱️ {{ roleTool.tool.estimatedHours }}h estimated
+          </span>
+        </div>
+
+        <!-- Suggested Courses in Card -->
+        <div class="card-courses" *ngIf="roleTool.suggestedCourses && roleTool.suggestedCourses.length > 0">
+          <h6 class="card-courses-title">📚 Suggested Courses:</h6>
+          <div class="card-course-item" *ngFor="let course of roleTool.suggestedCourses">
+            <span class="card-course-name">{{ course.courseName }}</span>
+            <span class="card-course-meta">{{ course.level }} • {{ course.estimatedHours }}h</span>
+          </div>
+        </div>
+        
+        <div class="tool-actions">
+          <button 
+            class="btn-action btn-linkedin"
+            (click)="searchLinkedIn(roleTool.tool)"
+            title="Search LinkedIn Learning">
+            🔍 LinkedIn
+          </button>
+          <button 
+            class="btn-action btn-coursera"
+            (click)="searchCoursera(roleTool.tool)"
+            title="Search Coursera">
+            🔍 Coursera
+          </button>
+          <button 
+            class="btn-action btn-ai"
+            (click)="onGenerateCourse(roleTool.tool)"
+            title="Generate Course with AI">
+            🤖 Generate
+          </button>
+        </div>
+        
+        <div class="tool-card-footer">
+          <button class="btn-edit" (click)="editRoleTool(roleTool)">Edit</button>
+          <button class="btn-delete" (click)="deleteTool(roleTool)">Remove</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty State for Tools -->
+    <div class="empty-tools" *ngIf="roleTools.length === 0 && !showAddForm && !showAISuggestions">
+      <div class="empty-icon">📭</div>
+      <h4>No Tools Assigned</h4>
+      <p>This role doesn't have any tools assigned yet.</p>
+      <div class="empty-actions">
+        <button class="btn-ai-generate" (click)="generateToolsWithAI()" [disabled]="isGeneratingAI">
+          <span *ngIf="!isGeneratingAI">🤖 Generate with AI</span>
+          <span *ngIf="isGeneratingAI"><span class="spinner"></span> Generating...</span>
+        </button>
+        <button class="btn-outline" (click)="openAddForm()">+ Add Manually</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Tool Form -->
+  <div class="tool-form-overlay" *ngIf="showAddForm">
+    <div class="tool-form-container">
+      <div class="tool-form-header">
+        <h4>{{ editingRoleToolId ? 'Edit Tool' : 'Add Tool' }} for {{ selectedRole }}</h4>
+        <button class="btn-close" (click)="closeAddForm()">×</button>
+      </div>
+      
+      <div class="tool-form-body">
+        <!-- Tool Search/Select -->
+        <div class="form-group" *ngIf="!editingRoleToolId">
+          <label class="form-label">Search Tool *</label>
+          <input 
+            type="text" 
+            class="form-input"
+            [(ngModel)]="searchTerm"
+            (input)="searchTools()"
+            placeholder="Type to search tools (e.g., Java, Angular, AWS)..."
+          />
+          
+          <!-- Search Results -->
+          <div class="search-results" *ngIf="filteredMasterTools.length > 0">
+            <div 
+              class="search-result-item"
+              *ngFor="let tool of filteredMasterTools"
+              (click)="selectTool(tool)">
+              <span class="result-icon">{{ getCategoryIcon(tool.category) }}</span>
+              <div class="result-info">
+                <span class="result-name">{{ tool.toolName }}</span>
+                <span class="result-category">{{ tool.category }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Selected Tool Display -->
+        <div class="selected-tool-display" *ngIf="newTool.toolName">
+          <div class="selected-tool-info">
+            <span class="selected-icon">{{ getCategoryIcon(newTool.category || '') }}</span>
+            <div>
+              <strong>{{ newTool.toolName }}</strong>
+              <span class="selected-category">{{ newTool.category }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Or Create New Tool -->
+        <div class="divider" *ngIf="!editingRoleToolId && !selectedToolId">
+          <span>or create a new tool</span>
+        </div>
+
+        <!-- New Tool Fields -->
+        <div *ngIf="!selectedToolId && !editingRoleToolId">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Tool Name *</label>
+              <input 
+                type="text" 
+                class="form-input"
+                [(ngModel)]="newTool.toolName"
+                placeholder="e.g., Angular, Python, AWS"
+              />
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Category *</label>
+              <select class="form-select" [(ngModel)]="newTool.category">
+                <option value="">Select Category</option>
+                <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea 
+              class="form-textarea"
+              [(ngModel)]="newTool.description"
+              placeholder="Brief description of this tool..."
+              rows="3"
+            ></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Keywords</label>
+            <div class="keywords-input">
+              <div class="keyword-tags">
+                <span class="keyword-chip" *ngFor="let kw of newTool.keywords; let i = index">
+                  {{ kw }}
+                  <button class="keyword-remove" (click)="removeKeyword(i)">×</button>
+                </span>
+              </div>
+              <div class="keyword-add">
+                <input 
+                  type="text" 
+                  class="form-input-sm"
+                  [(ngModel)]="newKeyword"
+                  placeholder="Add keyword..."
+                  (keyup.enter)="addKeyword()"
+                />
+                <button class="btn-add-keyword" (click)="addKeyword()">Add</button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Estimated Learning Hours</label>
+            <input 
+              type="number" 
+              class="form-input-sm"
+              [(ngModel)]="newTool.estimatedHours"
+              placeholder="e.g., 40"
+              min="1"
+            />
+          </div>
+        </div>
+
+        <!-- Required Level -->
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Required Level *</label>
+            <select class="form-select" [(ngModel)]="selectedLevel">
+              <option *ngFor="let level of levels" [value]="level.value">
+                {{ level.label }}
+              </option>
+            </select>
+          </div>
+          
+          <div class="form-group checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="isRequired" />
+              <span>Required for this role</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      
+      <div class="tool-form-footer">
+        <button class="btn-cancel" (click)="closeAddForm()">Cancel</button>
+        <button 
+          class="btn-save"
+          (click)="saveTool()"
+          [disabled]="isLoading || (!selectedToolId && !newTool.toolName)">
+          {{ isLoading ? 'Saving...' : (editingRoleToolId ? 'Update' : 'Add Tool') }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { map, catchError, timeout } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
 export interface GeneratedRoleData {
@@ -18,28 +18,46 @@ export interface CriticalWorkFunction {
 
 export interface CoreSkill {
   skillName: string;
-  proficiencyLevel: string; // 1-5
+  proficiencyLevel: string;
 }
 
 export interface TdcSkill {
   skillName: string;
-  proficiencyLevel: string; // Basic, Intermediate, Advanced
+  proficiencyLevel: string;
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class AiRoleService {
-  private apiUrl = environment.claudeApiUrl;
-  private apiKey = environment.claudeApiKey;
-  private model = environment.claudeModel;
+  private apiUrl: string;
+  private apiKey: string;
+  private model: string;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) {
+    // Safely access environment variables
+    this.apiUrl = (environment as any).claudeApiUrl || 'https://api.anthropic.com/v1/messages';
+    this.apiKey = (environment as any).claudeApiKey || '';
+    this.model = (environment as any).claudeModel || 'claude-sonnet-4-20250514';
+  }
+
+  /**
+   * Check if AI is configured
+   */
+  isAiConfigured(): boolean {
+    return !!(this.apiKey && this.apiKey.length > 0);
+  }
 
   /**
    * Generate role data (description, skills, etc.) using Claude AI
    */
   generateRoleData(roleName: string, sectorName: string, trackName: string): Observable<GeneratedRoleData> {
+    // Check if AI is configured
+    if (!this.isAiConfigured()) {
+      console.warn('AI not configured - returning default data');
+      return of(this.getDefaultRoleData(roleName, sectorName, trackName));
+    }
+
     const prompt = this.buildPrompt(roleName, sectorName, trackName);
     
     const headers = new HttpHeaders({
@@ -61,14 +79,15 @@ export class AiRoleService {
     };
 
     return this.http.post<any>(this.apiUrl, body, { headers }).pipe(
+      timeout(30000), // 30 second timeout
       map(response => {
         const content = response.content[0]?.text || '';
-        return this.parseResponse(content);
+        return this.parseResponse(content, roleName, sectorName, trackName);
       }),
-      catchError(error => {
+      catchError((error: HttpErrorResponse) => {
         console.error('AI API Error:', error);
-        // Return default structure on error
-        return of(this.getDefaultRoleData(roleName));
+        // Return default data on error - don't throw
+        return of(this.getDefaultRoleData(roleName, sectorName, trackName));
       })
     );
   }
@@ -77,6 +96,12 @@ export class AiRoleService {
    * Generate only job description using Claude AI
    */
   generateDescription(roleName: string, sectorName: string, trackName: string): Observable<string> {
+    // Check if AI is configured
+    if (!this.isAiConfigured()) {
+      console.warn('AI not configured - returning default description');
+      return of(this.getDefaultDescription(roleName, sectorName, trackName));
+    }
+
     const prompt = `You are an expert in Skills Framework for the ${sectorName} sector, specifically in the ${trackName} track.
 
 Write a professional job description for the position: "${roleName}"
@@ -108,14 +133,19 @@ Respond with ONLY the description text, no JSON or formatting.`;
     };
 
     return this.http.post<any>(this.apiUrl, body, { headers }).pipe(
+      timeout(30000),
       map(response => {
-        return response.content[0]?.text?.trim() || '';
+        return response.content[0]?.text?.trim() || this.getDefaultDescription(roleName, sectorName, trackName);
       }),
-      catchError(error => {
+      catchError((error: HttpErrorResponse) => {
         console.error('AI API Error:', error);
-        return of(`The ${roleName} is responsible for key activities within the ${trackName} domain, contributing to organizational objectives in the ${sectorName} sector.`);
+        return of(this.getDefaultDescription(roleName, sectorName, trackName));
       })
     );
+  }
+
+  private getDefaultDescription(roleName: string, sectorName: string, trackName: string): string {
+    return `The ${roleName} is responsible for key activities within the ${trackName} domain, contributing to organizational objectives in the ${sectorName} sector and delivering quality outcomes.`;
   }
 
   private buildPrompt(roleName: string, sectorName: string, trackName: string): string {
@@ -177,14 +207,14 @@ Guidelines:
 Make the content specific to the ${sectorName} sector and ${trackName} track.`;
   }
 
-  private parseResponse(content: string): GeneratedRoleData {
+  private parseResponse(content: string, roleName: string, sectorName: string, trackName: string): GeneratedRoleData {
     try {
       // Try to extract JSON from the response
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
         return {
-          jobRoleDescription: parsed.jobRoleDescription || '',
+          jobRoleDescription: parsed.jobRoleDescription || this.getDefaultDescription(roleName, sectorName, trackName),
           criticalWorkFunctions: parsed.criticalWorkFunctions || [],
           coreSkills: parsed.coreSkills || [],
           tdcSkills: parsed.tdcSkills || []
@@ -194,25 +224,31 @@ Make the content specific to the ${sectorName} sector and ${trackName} track.`;
       console.error('Error parsing AI response:', e);
     }
     
-    return this.getDefaultRoleData('Unknown Role');
+    return this.getDefaultRoleData(roleName, sectorName, trackName);
   }
 
-  private getDefaultRoleData(roleName: string): GeneratedRoleData {
+  private getDefaultRoleData(roleName: string, sectorName: string, trackName: string): GeneratedRoleData {
     return {
-      jobRoleDescription: `The ${roleName} is responsible for key activities within their domain, contributing to organizational objectives and delivering quality outcomes.`,
+      jobRoleDescription: this.getDefaultDescription(roleName, sectorName, trackName),
       criticalWorkFunctions: [
         {
           name: 'Core Responsibilities',
           keyTasks: ['Perform primary job functions', 'Maintain quality standards', 'Collaborate with team members']
+        },
+        {
+          name: 'Planning & Analysis',
+          keyTasks: ['Analyze requirements', 'Develop solutions', 'Document processes']
         }
       ],
       coreSkills: [
         { skillName: 'Domain Knowledge', proficiencyLevel: '3' },
-        { skillName: 'Problem Solving', proficiencyLevel: '3' }
+        { skillName: 'Problem Solving', proficiencyLevel: '3' },
+        { skillName: 'Technical Analysis', proficiencyLevel: '3' }
       ],
       tdcSkills: [
         { skillName: 'Communication', proficiencyLevel: 'Intermediate' },
-        { skillName: 'Teamwork', proficiencyLevel: 'Intermediate' }
+        { skillName: 'Teamwork', proficiencyLevel: 'Intermediate' },
+        { skillName: 'Adaptability', proficiencyLevel: 'Intermediate' }
       ]
     };
   }

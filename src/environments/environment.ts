@@ -6,7 +6,7 @@ export const environment = {
     contentFolder: "http://localhost/LightWeightContentFolder",
     
     // Claude AI Configuration
-    claudeApiKey: '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',
+    claudeApiKey: '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',
     claudeApiUrl: 'https://api.anthropic.com/v1/messages',
     claudeModel: 'claude-sonnet-4-20250514'
 };
