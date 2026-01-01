@@ -1,0 +1,349 @@
+<div style="min-height: 100vh; background-color: #f3f4f6;">
+  <!-- Header matching original design -->
+  <header style="background: white; border-bottom: 1px solid #e5e7eb; padding: 1rem 1.5rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+    <div style="max-width: 1280px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between;">
+      <div>
+        <h1 style="font-size: 1.5rem; font-weight: 600; color: #111827; margin: 0;">Bulk Learning Path Generator</h1>
+        <p style="font-size: 0.875rem; color: #6b7280; margin: 0.25rem 0 0 0;">Generate structured learning paths with AI-powered courses</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <div style="max-width: 1280px; margin: 0 auto; padding: 1.5rem;">
+    
+    <!-- Navigation Tabs -->
+    <div style="background: white; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
+      <div style="display: flex; border-bottom: 1px solid #e5e7eb;">
+        <button 
+          (click)="switchView('upload')"
+          [style.background]="viewMode === 'upload' ? '#eff6ff' : 'transparent'"
+          [style.color]="viewMode === 'upload' ? '#2563eb' : '#6b7280'"
+          [style.border-bottom]="viewMode === 'upload' ? '2px solid #2563eb' : '2px solid transparent'"
+          style="flex: 1; padding: 0.875rem 1rem; font-weight: 500; font-size: 0.875rem; border: none; cursor: pointer; transition: all 0.2s;">
+          📤 Upload Data
+        </button>
+        <button 
+          (click)="switchView('generate')"
+          [style.background]="viewMode === 'generate' ? '#eff6ff' : 'transparent'"
+          [style.color]="viewMode === 'generate' ? '#2563eb' : '#6b7280'"
+          [style.border-bottom]="viewMode === 'generate' ? '2px solid #2563eb' : '2px solid transparent'"
+          [disabled]="uploadedData.length === 0"
+          style="flex: 1; padding: 0.875rem 1rem; font-weight: 500; font-size: 0.875rem; border: none; cursor: pointer; transition: all 0.2s;">
+          ⚙️ Generate
+        </button>
+        <button 
+          (click)="switchView('list')"
+          [style.background]="viewMode === 'list' ? '#eff6ff' : 'transparent'"
+          [style.color]="viewMode === 'list' ? '#2563eb' : '#6b7280'"
+          [style.border-bottom]="viewMode === 'list' ? '2px solid #2563eb' : '2px solid transparent'"
+          style="flex: 1; padding: 0.875rem 1rem; font-weight: 500; font-size: 0.875rem; border: none; cursor: pointer; transition: all 0.2s;">
+          📚 List
+        </button>
+      </div>
+    </div>
+
+    <!-- Upload View -->
+    <div *ngIf="viewMode === 'upload'" style="background: white; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 1.5rem;">
+      <div style="max-width: 768px; margin: 0 auto;">
+        
+        <!-- Data Source Toggle -->
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 2rem; justify-content: center;">
+          <button 
+            (click)="switchDataSource('excel')"
+            [style.background]="dataSource === 'excel' ? '#2563eb' : '#e5e7eb'"
+            [style.color]="dataSource === 'excel' ? 'white' : '#6b7280'"
+            style="padding: 0.5rem 1.5rem; border-radius: 0.375rem; border: none; font-weight: 500; cursor: pointer; font-size: 0.875rem;">
+            📁 Upload Excel
+          </button>
+          <button 
+            (click)="switchDataSource('api')"
+            [style.background]="dataSource === 'api' ? '#2563eb' : '#e5e7eb'"
+            [style.color]="dataSource === 'api' ? 'white' : '#6b7280'"
+            style="padding: 0.5rem 1.5rem; border-radius: 0.375rem; border: none; font-weight: 500; cursor: pointer; font-size: 0.875rem;">
+            🔗 Fetch from API
+          </button>
+        </div>
+
+        <!-- Excel Upload Section -->
+        <div *ngIf="dataSource === 'excel'">
+          <div style="text-align: center; margin-bottom: 1.5rem;">
+            <h2 style="font-size: 1.25rem; font-weight: 600; color: #111827; margin-bottom: 0.5rem;">Upload Learning Paths Excel</h2>
+            <p style="color: #6b7280; font-size: 0.875rem;">Upload an Excel file with Role, Learning Path, Level, and Category columns</p>
+          </div>
+
+          <!-- File Upload Area -->
+          <div style="border: 2px dashed #d1d5db; border-radius: 0.5rem; padding: 2rem; text-align: center; background: #f9fafb;">
+            <input 
+              type="file" 
+              accept=".xlsx,.xls"
+              (change)="onFileSelect($event)"
+              style="display: none;"
+              #fileInput>
+            
+            <button 
+              (click)="fileInput.click()"
+              [disabled]="isUploading"
+              style="background: #2563eb; color: white; padding: 0.625rem 1.25rem; border-radius: 0.375rem; border: none; font-weight: 500; cursor: pointer; font-size: 0.875rem;">
+              <span *ngIf="!isUploading">📁 Choose Excel File</span>
+              <span *ngIf="isUploading">⏳ Processing...</span>
+            </button>
+
+            <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.75rem;">Supports .xlsx and .xls formats</p>
+          </div>
+
+          <!-- Error Message -->
+          <div *ngIf="uploadError" style="margin-top: 1rem; padding: 0.75rem; background: #fee2e2; border-left: 3px solid #ef4444; border-radius: 0.375rem;">
+            <p style="color: #991b1b; font-size: 0.875rem; margin: 0;">❌ {{ uploadError }}</p>
+          </div>
+
+          <!-- Success Message -->
+          <div *ngIf="uploadedData.length > 0 && !isUploading" style="margin-top: 1rem; padding: 0.75rem; background: #d1fae5; border-left: 3px solid #10b981; border-radius: 0.375rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div>
+                <p style="color: #065f46; font-weight: 600; font-size: 0.875rem; margin: 0;">✅ Uploaded {{ uploadedData.length }} learning paths</p>
+                <p style="color: #059669; font-size: 0.75rem; margin: 0.25rem 0 0 0;">
+                  {{ roles.length }} roles • {{ learningPaths.length }} paths
+                </p>
+              </div>
+              <button 
+                (click)="switchView('generate')"
+                style="background: #059669; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; border: none; cursor: pointer; font-size: 0.875rem;">
+                Continue →
+              </button>
+            </div>
+          </div>
+
+          <!-- Sample Format -->
+          <div style="margin-top: 1.5rem; padding: 1rem; background: #eff6ff; border-left: 3px solid #3b82f6; border-radius: 0.375rem;">
+            <h3 style="font-weight: 600; color: #1e40af; margin: 0 0 0.5rem 0; font-size: 0.875rem;">📋 Expected Excel Format:</h3>
+            <div style="overflow-x: auto;">
+              <table style="width: 100%; font-size: 0.75rem; border-collapse: collapse;">
+                <thead>
+                  <tr style="background: #dbeafe;">
+                    <th style="padding: 0.5rem; text-align: left; border: 1px solid #bfdbfe;">Role</th>
+                    <th style="padding: 0.5rem; text-align: left; border: 1px solid #bfdbfe;">Learning Path</th>
+                    <th style="padding: 0.5rem; text-align: left; border: 1px solid #bfdbfe;">Level</th>
+                    <th style="padding: 0.5rem; text-align: left; border: 1px solid #bfdbfe;">Category</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="padding: 0.5rem; border: 1px solid #bfdbfe;">Developer</td>
+                    <td style="padding: 0.5rem; border: 1px solid #bfdbfe;">Angular</td>
+                    <td style="padding: 0.5rem; border: 1px solid #bfdbfe;">2</td>
+                    <td style="padding: 0.5rem; border: 1px solid #bfdbfe;">Web Development</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- API Fetch Section -->
+        <div *ngIf="dataSource === 'api'">
+          <div style="text-align: center; margin-bottom: 1.5rem;">
+            <h2 style="font-size: 1.25rem; font-weight: 600; color: #111827; margin-bottom: 0.5rem;">Fetch from Database</h2>
+            <p style="color: #6b7280; font-size: 0.875rem;">Retrieve roles and learning paths from the Skills Framework API</p>
+          </div>
+
+          <!-- Fetch Button -->
+          <div style="text-align: center; padding: 2rem; background: #f9fafb; border-radius: 0.5rem; border: 1px solid #e5e7eb;">
+            <button 
+              (click)="fetchFromAPI()"
+              [disabled]="isFetchingFromAPI"
+              style="background: #2563eb; color: white; padding: 0.75rem 2rem; border-radius: 0.375rem; border: none; font-weight: 500; cursor: pointer; font-size: 0.875rem;">
+              <span *ngIf="!isFetchingFromAPI">🔄 Fetch Roles & Learning Paths</span>
+              <span *ngIf="isFetchingFromAPI">⏳ Fetching...</span>
+            </button>
+            <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.75rem;">Data will be retrieved from Skills Framework database</p>
+          </div>
+
+          <!-- API Error Message -->
+          <div *ngIf="fetchError" style="margin-top: 1rem; padding: 0.75rem; background: #fee2e2; border-left: 3px solid #ef4444; border-radius: 0.375rem;">
+            <p style="color: #991b1b; font-size: 0.875rem; margin: 0;">❌ {{ fetchError }}</p>
+          </div>
+
+          <!-- API Success Message -->
+          <div *ngIf="uploadedData.length > 0 && !isFetchingFromAPI && dataSource === 'api'" style="margin-top: 1rem; padding: 0.75rem; background: #d1fae5; border-left: 3px solid #10b981; border-radius: 0.375rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div>
+                <p style="color: #065f46; font-weight: 600; font-size: 0.875rem; margin: 0;">✅ Fetched {{ uploadedData.length }} learning paths</p>
+                <p style="color: #059669; font-size: 0.75rem; margin: 0.25rem 0 0 0;">
+                  {{ roles.length }} roles • {{ learningPaths.length }} paths
+                </p>
+              </div>
+              <button 
+                (click)="switchView('generate')"
+                style="background: #059669; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; border: none; cursor: pointer; font-size: 0.875rem;">
+                Continue →
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Generate View -->
+    <div *ngIf="viewMode === 'generate'" style="background: white; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 1.5rem;">
+      <div style="max-width: 768px; margin: 0 auto;">
+        
+        <h2 style="font-size: 1.25rem; font-weight: 600; color: #111827; margin-bottom: 1.5rem;">Generate Learning Path Courses</h2>
+
+        <!-- Role Selection -->
+        <div style="margin-bottom: 1.25rem;">
+          <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Select Role</label>
+          <select 
+            [(ngModel)]="selectedRole" 
+            (change)="onRoleChange()"
+            style="width: 100%; padding: 0.625rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.875rem; color: #111827;">
+            <option value="">-- Select a role --</option>
+            <option *ngFor="let role of roles" [value]="role">{{ role }}</option>
+          </select>
+        </div>
+
+        <!-- Learning Path Selection -->
+        <div style="margin-bottom: 1.25rem;">
+          <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Select Learning Path</label>
+          <select 
+            [(ngModel)]="selectedLearningPath"
+            [disabled]="!selectedRole"
+            style="width: 100%; padding: 0.625rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.875rem; color: #111827;">
+            <option value="">-- Select a learning path --</option>
+            <option *ngFor="let path of filteredLearningPaths" [value]="path">{{ path }}</option>
+          </select>
+        </div>
+
+        <!-- Selected Path Info -->
+        <div *ngIf="selectedRole && selectedLearningPath && getSelectedLearningPathData() as data" 
+             style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 0.375rem;">
+          <h3 style="font-weight: 600; color: #111827; margin: 0 0 0.75rem 0; font-size: 0.875rem;">Selected Path Details:</h3>
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; font-size: 0.875rem;">
+            <div>
+              <span style="color: #6b7280;">Role:</span>
+              <span style="color: #111827; font-weight: 500; margin-left: 0.5rem;">{{ data.role }}</span>
+            </div>
+            <div>
+              <span style="color: #6b7280;">Learning Path:</span>
+              <span style="color: #111827; font-weight: 500; margin-left: 0.5rem;">{{ data.learningPath }}</span>
+            </div>
+            <div>
+              <span style="color: #6b7280;">Level:</span>
+              <span style="color: #111827; font-weight: 500; margin-left: 0.5rem;">{{ data.level }}</span>
+            </div>
+            <div>
+              <span style="color: #6b7280;">Category:</span>
+              <span style="color: #111827; font-weight: 500; margin-left: 0.5rem;">{{ data.category }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Generate Button - FIXED -->
+        <button 
+          (click)="generateCourses()"
+          [disabled]="!selectedRole || !selectedLearningPath || isGenerating || isLearningPathProcessed()"
+          [style.background]="!selectedRole || !selectedLearningPath || isGenerating ? '#d1d5db' : '#2563eb'"
+          [style.cursor]="!selectedRole || !selectedLearningPath || isGenerating ? 'not-allowed' : 'pointer'"
+          style="width: 100%; padding: 0.75rem; border: none; border-radius: 0.375rem; color: white; font-weight: 600; font-size: 0.875rem; transition: background 0.2s;">
+          <span *ngIf="!isGenerating && !isLearningPathProcessed()">🚀 Generate 4 Courses</span>
+          <span *ngIf="isGenerating">⏳ Generating... {{ generationProgress }}</span>
+          <span *ngIf="isLearningPathProcessed()">✅ Already Generated</span>
+        </button>
+
+        <!-- Progress Message -->
+        <div *ngIf="isGenerating" style="margin-top: 1rem; padding: 0.75rem; background: #eff6ff; border-left: 3px solid #3b82f6; border-radius: 0.375rem;">
+          <p style="color: #1e40af; font-size: 0.875rem; margin: 0;">{{ generationProgress }}</p>
+        </div>
+
+        <!-- Generated Package Preview -->
+        <div *ngIf="generatedPackage" style="margin-top: 1.5rem; padding: 1rem; background: #d1fae5; border-left: 3px solid #10b981; border-radius: 0.375rem;">
+          <h3 style="font-weight: 600; color: #065f46; margin: 0 0 0.75rem 0; font-size: 0.875rem;">✅ Learning Path Created Successfully!</h3>
+          <p style="font-weight: 500; color: #047857; margin: 0 0 0.5rem 0; font-size: 0.875rem;">{{ generatedPackage.courseName }}</p>
+          <p style="color: #059669; font-size: 0.75rem; margin: 0;">
+            {{ generatedPackage.courses?.length || 0 }} courses generated
+          </p>
+          <button 
+            (click)="switchView('list')"
+            style="margin-top: 0.75rem; background: #059669; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; border: none; cursor: pointer; font-size: 0.75rem;">
+            View All Learning Paths →
+          </button>
+        </div>
+
+        <!-- Reset Button -->
+        <button 
+          (click)="resetUpload()"
+          style="width: 100%; margin-top: 1rem; padding: 0.625rem; border: 1px solid #d1d5db; background: white; border-radius: 0.375rem; color: #6b7280; font-weight: 500; cursor: pointer; font-size: 0.875rem;">
+          ← Start Over
+        </button>
+
+      </div>
+    </div>
+
+    <!-- List View -->
+    <div *ngIf="viewMode === 'list'">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="font-size: 1.25rem; font-weight: 600; color: #111827; margin: 0;">All Learning Paths</h2>
+        <button 
+          (click)="loadExistingPackages()"
+          [disabled]="isLoadingPackages"
+          style="padding: 0.5rem 1rem; background: #2563eb; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
+          <span *ngIf="!isLoadingPackages">🔄 Refresh</span>
+          <span *ngIf="isLoadingPackages">⏳ Loading...</span>
+        </button>
+      </div>
+
+      <!-- Packages List -->
+      <div *ngIf="allPackages.length === 0 && !isLoadingPackages" style="text-align: center; padding: 3rem; background: white; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">📚</div>
+        <p style="color: #6b7280; font-size: 0.875rem;">No learning paths found. Generate your first learning path!</p>
+      </div>
+
+      <div style="display: grid; gap: 1rem;">
+        <div *ngFor="let package of allPackages" style="background: white; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 1.25rem;">
+          <!-- Package Header -->
+          <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+            <div style="flex: 1;">
+              <h3 style="font-size: 1rem; font-weight: 600; color: #111827; margin: 0 0 0.5rem 0;">{{ package.courseName }}</h3>
+              <p style="color: #6b7280; font-size: 0.875rem; margin: 0;">{{ package.description }}</p>
+              <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                <span style="display: inline-block; padding: 0.25rem 0.5rem; background: #dbeafe; color: #1e40af; border-radius: 0.25rem; font-size: 0.75rem;">
+                  {{ package.categoryName }}
+                </span>
+                <span style="display: inline-block; padding: 0.25rem 0.5rem; background: #d1fae5; color: #065f46; border-radius: 0.25rem; font-size: 0.75rem;">
+                  {{ package.status }}
+                </span>
+              </div>
+            </div>
+            <button 
+              (click)="deletePackage(package.courseId!)"
+              style="padding: 0.375rem 0.75rem; background: #fee2e2; color: #991b1b; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.75rem;">
+              🗑️ Delete
+            </button>
+          </div>
+
+          <!-- Courses in Package -->
+          <div *ngIf="package.courses && package.courses.length > 0" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
+            <p style="font-size: 0.875rem; font-weight: 500; color: #374151; margin: 0 0 0.75rem 0;">Courses ({{ package.courses.length }}):</p>
+            <div style="display: grid; gap: 0.75rem;">
+              <div *ngFor="let course of package.courses" style="padding: 0.75rem; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 0.375rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <div style="flex: 1;">
+                    <p style="font-weight: 500; color: #111827; font-size: 0.875rem; margin: 0;">{{ course.courseName }}</p>
+                    <p style="color: #6b7280; font-size: 0.75rem; margin: 0.25rem 0 0 0;">{{ course.duration }} • {{ course.categoryName }}</p>
+                  </div>
+                  <button 
+                    (click)="deleteCourse(course.courseId!)"
+                    style="padding: 0.25rem 0.5rem; background: #fee2e2; color: #991b1b; border: none; border-radius: 0.25rem; cursor: pointer; font-size: 0.75rem;">
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

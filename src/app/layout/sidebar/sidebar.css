@@ -1,0 +1,133 @@
+/* Sidebar Container */
+aside {
+  background-color: #ffffff;
+  border-right: 1px solid #e5e7eb;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Navigation Container */
+nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Navigation Links */
+nav a {
+  text-decoration: none;
+  color: #374151;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+}
+
+/* Hover State */
+nav a:hover {
+  background-color: #eff6ff;
+  border-left-color: #3b82f6;
+}
+
+/* Active State */
+nav a.bg-blue-100 {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+  font-weight: 600;
+  border-left-color: #1d4ed8;
+}
+
+nav a.text-blue-700 {
+  color: #1d4ed8;
+}
+
+nav a.font-bold {
+  font-weight: 600;
+}
+
+/* Focus State for Accessibility */
+nav a:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Smooth Transitions */
+nav a {
+  transition: background-color 0.2s, color 0.2s, border-left-color 0.2s;
+}
+
+/* Scrollbar Styling */
+aside::-webkit-scrollbar {
+  width: 6px;
+}
+
+aside::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+aside::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+aside::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Empty State Styling */
+nav div[class*="text-center"] {
+  background-color: #f9fafb;
+  border-radius: 0.5rem;
+  padding: 1.5rem 1rem;
+  margin: 0 0.5rem;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  nav {
+    font-size: 0.875rem;
+  }
+}
+
+@media (max-width: 768px) {
+  nav {
+    font-size: 0.8125rem;
+  }
+  
+  nav a {
+    padding: 0.4rem 0.75rem;
+  }
+}
+
+/* Print Styles */
+@media print {
+  aside {
+    display: none;
+  }
+}
+
+/* Dark Mode Support (Optional) */
+@media (prefers-color-scheme: dark) {
+  aside {
+    background-color: #1f2937;
+    border-right-color: #374151;
+  }
+  
+  nav a {
+    color: #d1d5db;
+  }
+  
+  nav a:hover {
+    background-color: #374151;
+  }
+  
+  nav a.bg-blue-100 {
+    background-color: #1e40af;
+    color: #93c5fd;
+  }
+}

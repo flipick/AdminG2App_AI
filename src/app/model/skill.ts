@@ -18,6 +18,14 @@ export interface IJobRole {
   jobRoleName: string;
   isbaseRole: boolean;
   jobRoleDescription: string;
+  sectorName?: string;   // Optional: populated when loading tenant roles
+  trackName?: string;    // Optional: populated when loading tenant roles
+  addedByUser?: number;  // Optional: 1 = custom role, 0 = standard role
+  // API alternative field names
+  jobRole?: string;      // API sometimes returns 'jobRole' instead of 'jobRoleName'
+  sector?: string;       // API sometimes returns 'sector' instead of 'sectorName'
+  track?: string;        // API sometimes returns 'track' instead of 'trackName'
+  tenantJobRoleId?: number; // API returns this for tenant-assigned roles
 }
 
 // ==================== API Request Body ====================
@@ -35,6 +43,7 @@ export interface SectorRequest {
 // ==================== Key Task & Group ====================
 export interface KeyTask {
   keyTaskSkill: string;
+  criticalWorkFunction?: string;  // Added: needed for grouping from API response
   oldValue?: string;
   isAlreadyCreated?: boolean;
   isNew?: boolean;
@@ -45,6 +54,7 @@ export interface GroupedKeyTask {
   criticalWorkFunction: string;
   oldValue?: string;
   isEdited?: boolean;
+  isEditing?: boolean;  // Added: UI state for inline editing mode
   tasks: KeyTask[];
 }
 

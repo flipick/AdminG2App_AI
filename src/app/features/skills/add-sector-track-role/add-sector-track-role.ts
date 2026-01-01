@@ -1,10 +1,11 @@
-import { Component, EventEmitter, Input, Output, ViewChild } from '@angular/core';
+import { Component, EventEmitter, Input, Output, ViewChild, OnInit, OnChanges, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { ApiResponse, SkillService } from '../../../services/skill-services';
 import { DeleteSectorTrackRole } from '../delete-sector-track-role/delete-sector-track-role';
 import { Popup } from '../../../shared/popup/popup';
 import { PopupConfig } from '../../../model/popupconfig';
+import { AiRoleService, GeneratedRoleData } from '../../../services/ai-role.service';
 
 @Component({
   selector: 'app-add-sector-track-role',
@@ -13,10 +14,12 @@ import { PopupConfig } from '../../../model/popupconfig';
   templateUrl: './add-sector-track-role.html',
   styleUrls: ['./add-sector-track-role.css']
 })
-export class AddSectorTrackRole {
+export class AddSectorTrackRole implements OnInit, OnChanges {
   // ------------------- Inputs & Outputs -------------------
   @Input() tenantlist: any[] = [];
   @Input() selectedTenantId: string = '';
+  @Input() selectedSector: string = '';
+  @Input() selectedTrack: string = '';
   @Output() added = new EventEmitter<any>();
   @Output() cancelled = new EventEmitter<void>();
 
@@ -38,6 +41,12 @@ export class AddSectorTrackRole {
   errorMessage: string = '';
 
   showForm: boolean = false;
+  
+  // AI Generation State
+  isGeneratingDescription: boolean = false;
+  isGeneratingFullData: boolean = false;
+  generatedRoleData: GeneratedRoleData | null = null;
+  showGeneratedPreview: boolean = false;
 
   // ------------------- Data Containers -------------------
   rawData: any[] = [];
@@ -46,6 +55,7 @@ export class AddSectorTrackRole {
   roles: any[] = [];
   filteredSectors: string[] = [];
   filteredTracks: string[] = [];
+  filteredTracksForSector: any[] = []; // Tracks filtered by selected sector
 
   //---------------------- Pagination ----------------------
   currentPage: number = 1;
@@ -54,12 +64,76 @@ export class AddSectorTrackRole {
   totalPages: number = 0;
 
 
-  constructor(private skillService: SkillService) {}
+  constructor(
+    private skillService: SkillService,
+    private aiRoleService: AiRoleService
+  ) {}
 
   // ------------------- Lifecycle -------------------
   ngOnInit() {
-    this.newTenantId = this.selectedTenantId;
+    this.applyInputValues();
     this.getSectorData();
+  }
+
+  ngOnChanges(changes: SimpleChanges) {
+    // When parent changes tenantId, update local value
+    if (changes['selectedTenantId'] && !changes['selectedTenantId'].firstChange) {
+      this.newTenantId = this.selectedTenantId;
+    }
+    
+    // When parent changes sector, update local value and load tracks
+    if (changes['selectedSector'] && !changes['selectedSector'].firstChange) {
+      this.newSector = this.selectedSector;
+      this.updateTracksForSector(this.selectedSector);
+    }
+    
+    // When parent changes track, update local value
+    if (changes['selectedTrack'] && !changes['selectedTrack'].firstChange) {
+      this.newTrack = this.selectedTrack;
+    }
+  }
+
+  private applyInputValues(): void {
+    this.newTenantId = this.selectedTenantId || '';
+    this.newSector = this.selectedSector || '';
+    this.newTrack = this.selectedTrack || '';
+    
+    // If sector is already selected, load its tracks
+    if (this.newSector && this.rawData.length > 0) {
+      this.updateTracksForSector(this.newSector);
+    }
+  }
+
+  /**
+   * Update tracks dropdown based on selected sector
+   */
+  private updateTracksForSector(sectorName: string): void {
+    if (!sectorName || !this.rawData.length) {
+      this.filteredTracksForSector = [];
+      return;
+    }
+    
+    const sectorObj = this.rawData.find((s: any) => s.sectorName === sectorName);
+    if (sectorObj) {
+      this.filteredTracksForSector = sectorObj.trackList?.map((t: any) => ({
+        trackId: t.trackId,
+        trackName: t.trackName
+      })) || [];
+    } else {
+      this.filteredTracksForSector = [];
+    }
+  }
+
+  /**
+   * Handle sector dropdown change
+   */
+  onSectorDropdownChange(event: Event): void {
+    const selectElement = event.target as HTMLSelectElement;
+    const selectedSector = selectElement.value;
+    
+    this.newSector = selectedSector;
+    this.newTrack = ''; // Reset track when sector changes
+    this.updateTracksForSector(selectedSector);
   }
 
   // ------------------- Fetch & Prepare Data -------------------
@@ -69,6 +143,9 @@ export class AddSectorTrackRole {
         if (!res.isError && res.statusCode === 200 && res.result?.data) {
           this.rawData = res.result.data;
           this.prepareData();
+          
+          // After data is loaded, apply input values and update tracks
+          this.applyInputValues();
         } else {
           this.errorMessage = res.message || 'Failed to fetch sector data.';
         }
@@ -112,7 +189,7 @@ export class AddSectorTrackRole {
     this.updatePagedRoles();
   }
 
-  // ------------------- Filtering -------------------
+  // ------------------- Filtering (Legacy - for autocomplete if needed) -------------------
   filterSectors() {
     const val = this.newSector.toLowerCase();
     this.filteredSectors = this.rawData
@@ -124,6 +201,7 @@ export class AddSectorTrackRole {
     this.newSector = sector;
     this.filteredSectors = [];
     this.newTrack = '';
+    this.updateTracksForSector(sector);
   }
 
   filterTracks() {
@@ -217,6 +295,13 @@ export class AddSectorTrackRole {
     this.jobRoleDescription = item.jobRoleDescription || '';
     this.addMessage = '';
     this.showForm = true;
+    
+    // Update tracks dropdown for the selected sector
+    this.updateTracksForSector(item.sector);
+    
+    // Clear AI preview
+    this.showGeneratedPreview = false;
+    this.generatedRoleData = null;
   }
 
   // ------------------- Delete -------------------
@@ -256,27 +341,42 @@ export class AddSectorTrackRole {
   showAddForm() {
     this.resetForm();
     this.showForm = true;
+    
+    // Ensure tracks dropdown is populated if sector is persisted
+    if (this.newSector) {
+      this.updateTracksForSector(this.newSector);
+    }
   }
 
   onCancel() {
     this.resetForm();
     this.showForm = false;
+    this.cancelled.emit();
   }
 
   private resetForm() {
-    this.newSector = '';
-    this.newTrack = '';
+    // Preserve parent-provided sector/track values
+    this.newSector = this.selectedSector || '';
+    this.newTrack = this.selectedTrack || '';
     this.newRole = '';
     this.jobRoleDescription = '';
     this.selectedRoleId = null;
     this.addMessage = '';
     this.filteredSectors = [];
     this.filteredTracks = [];
+    
+    // Update tracks dropdown for the preserved sector
+    if (this.newSector) {
+      this.updateTracksForSector(this.newSector);
+    }
+    
+    // Clear AI preview
+    this.showGeneratedPreview = false;
+    this.generatedRoleData = null;
   }
 
   // ------------------- Pagination Logic -------------------
   updatePagedRoles() {
-    // debugger;
     const startIndex = (this.currentPage - 1) * this.itemsPerPage;
     const endIndex = startIndex + this.itemsPerPage;
     this.pagedRoles = this.roles.slice(startIndex, endIndex);
@@ -302,6 +402,105 @@ export class AddSectorTrackRole {
       this.currentPage--;
       this.updatePagedRoles();
     }
+  }
+
+  // ------------------- AI Generation -------------------
+  
+  /**
+   * Generate job description using AI
+   */
+  generateDescriptionWithAI(): void {
+    if (!this.newRole || !this.newSector || !this.newTrack) {
+      this.addMessage = 'Please enter Role Name, Sector, and Track first.';
+      return;
+    }
+
+    this.isGeneratingDescription = true;
+    this.addMessage = '';
+
+    this.aiRoleService.generateDescription(
+      this.newRole,
+      this.newSector,
+      this.newTrack
+    ).subscribe({
+      next: (description) => {
+        this.jobRoleDescription = description;
+        this.isGeneratingDescription = false;
+        this.addMessage = 'Description generated successfully!';
+        setTimeout(() => this.addMessage = '', 3000);
+      },
+      error: (err) => {
+        console.error('AI generation error:', err);
+        this.isGeneratingDescription = false;
+        this.addMessage = 'Failed to generate description. Please try again.';
+      }
+    });
+  }
+
+  /**
+   * Generate full role data (description + skills) using AI
+   */
+  generateFullRoleDataWithAI(): void {
+    if (!this.newRole || !this.newSector || !this.newTrack) {
+      this.addMessage = 'Please enter Role Name, Sector, and Track first.';
+      return;
+    }
+
+    this.isGeneratingFullData = true;
+    this.addMessage = '';
+    this.generatedRoleData = null;
+
+    this.aiRoleService.generateRoleData(
+      this.newRole,
+      this.newSector,
+      this.newTrack
+    ).subscribe({
+      next: (data) => {
+        this.generatedRoleData = data;
+        this.jobRoleDescription = data.jobRoleDescription;
+        this.isGeneratingFullData = false;
+        this.showGeneratedPreview = true;
+        this.addMessage = 'Role data generated successfully! Review below.';
+      },
+      error: (err) => {
+        console.error('AI generation error:', err);
+        this.isGeneratingFullData = false;
+        this.addMessage = 'Failed to generate role data. Please try again.';
+      }
+    });
+  }
+
+  /**
+   * Apply generated data and emit to parent for skills configuration
+   */
+  applyGeneratedData(): void {
+    if (!this.generatedRoleData) return;
+
+    // The description is already applied
+    // Emit event with full generated data so parent can use it
+    this.added.emit({
+      tenantId: this.newTenantId,
+      sectorName: this.newSector,
+      trackName: this.newTrack,
+      roleName: this.newRole,
+      jobRoleDescription: this.jobRoleDescription,
+      generatedSkillsData: this.generatedRoleData
+    });
+  }
+
+  /**
+   * Clear generated preview
+   */
+  clearGeneratedPreview(): void {
+    this.showGeneratedPreview = false;
+    this.generatedRoleData = null;
+  }
+
+  /**
+   * Check if AI generation is available
+   */
+  canGenerateAI(): boolean {
+    return !!(this.newRole && this.newSector && this.newTrack);
   }
 
 }

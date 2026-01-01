@@ -1,0 +1,10 @@
+/* Minimal CSS - All styles are inline in the HTML */
+
+/* Animation for spinner */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Optional: Add any global overrides here if needed */

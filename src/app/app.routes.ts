@@ -8,7 +8,9 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/login/login').then((m) => m.Login),
   },
   {
-    path: '', redirectTo: 'login', pathMatch: 'full',
+    path: '', 
+    redirectTo: 'login', 
+    pathMatch: 'full',
   },
   {
     path: '',
@@ -20,6 +22,10 @@ export const routes: Routes = [
           loadComponent: () => import('./features/dashboard/dashboard').then((m) => m.Dashboard),
         },
         {
+          path: 'bulk-course-generator',
+          loadComponent: () => import('./features/course/bulk-course-generator/bulk-course-generator').then((m) => m.BulkCourseGenerator),
+        },
+        {
           path: 'course/:id',
           loadComponent: () => import('./features/course/course-add-edit/course-add-edit').then((m) => m.CourseAddEdit),
         },
@@ -27,10 +33,6 @@ export const routes: Routes = [
           path: 'course-list',
           loadComponent: () => import('./features/course/course-list/course-list').then((m) => m.CourseList),
         },
-        // {
-        //   path: 'course',
-        //   loadComponent: () => import('./features/course/course').then((m) => m.Course),
-        // },
         {
           path: 'assessment-add-edit/:id',
           loadComponent: () => import('./features/assessment/assessment-add-edit/assessment-add-edit').then((m) => m.AssessmentAddEdit)
@@ -42,10 +44,6 @@ export const routes: Routes = [
         {
           path: 'skills',
           loadComponent: () => import('./features/skills/skills').then((m) => m.Skills),
-        },
-        {
-          path: 'add-edit-skills',
-          loadComponent: () => import('./features/skills/add-edit-skills/add-edit-skills').then((m) => m.AddEditSkills),
         },
         {
           path: 'employee-list',
@@ -94,6 +92,7 @@ export const routes: Routes = [
     ]
   },
   {
-    path: '**',redirectTo: 'login',
+    path: '**',
+    redirectTo: 'login',
   },
 ];

@@ -1,16 +1,31 @@
-import { Component, OnInit, NgModule, ViewChild, ElementRef, viewChild, ViewChildren, QueryList } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef, ViewChildren, QueryList } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+
+// Services
 import { SkillService } from '../../services/skill-services';
 import { TenantService } from '../../services/tenant-service';
-import { CoreSkillGap, IJobRole, IJobSector, IJobTrack, KeyTask, SectorRequest, TdcSkillGap, GroupedKeyTask } from '../../model/skill';
-import { FormsModule } from '@angular/forms';
 import { PermissionService } from '../../services/permission-service';
 import { getTenantId } from '../../services/utility';
+
+// Models
+import { 
+  CoreSkillGap, 
+  IJobRole, 
+  IJobSector, 
+  IJobTrack, 
+  KeyTask, 
+  TdcSkillGap, 
+  GroupedKeyTask 
+} from '../../model/skill';
+
+// Child Components
 import { AddSectorTrackRole } from './add-sector-track-role/add-sector-track-role';
 
-
-// ✅ Generic API Response type
+// ============================================
+// TYPE DEFINITIONS
+// ============================================
 interface ApiResponse<T> {
   isError: boolean;
   statusCode: number;
@@ -18,7 +33,6 @@ interface ApiResponse<T> {
   message?: string;
 }
 
-// ✅ Matches your API's "result" structure
 interface SectorApiResult {
   data: IJobSector[];
   pageNumber: number;
@@ -27,6 +41,11 @@ interface SectorApiResult {
   totalRecordsText: string;
 }
 
+type TabType = 'browse-roles' | 'custom-roles' | 'manage-skills' | 'tools';
+
+// ============================================
+// COMPONENT
+// ============================================
 @Component({
   selector: 'app-skills',
   standalone: true,
@@ -35,54 +54,146 @@ interface SectorApiResult {
   styleUrls: ['./skills.css']
 })
 export class Skills implements OnInit {
+  
+  // ============================================
+  // VIEW CHILDREN
+  // ============================================
   @ViewChild('trackSelect') trackSelect!: ElementRef<HTMLSelectElement>;
   @ViewChild('sectorSelect') sectorSelect!: ElementRef<HTMLSelectElement>;
+  @ViewChild('trackSelectManageSkills') trackSelectManageSkills!: ElementRef<HTMLSelectElement>;
+  @ViewChild('sectorSelectManageSkills') sectorSelectManageSkills!: ElementRef<HTMLSelectElement>;
   @ViewChildren('editBtn') editButtons!: QueryList<ElementRef>;
 
-  errorMessage: string = '';
+  // ============================================
+  // STATE: Tabs
+  // ============================================
+  activeTab: TabType = 'browse-roles';
+
+  // ============================================
+  // STATE: Loading & Feedback
+  // ============================================
+  isLoading = false;
+  isSaving = false;
+  isAssigning = false;
+  successMessage = '';
+  errorMessage = '';
+
+  // ============================================
+  // STATE: Data
+  // ============================================
   sectorData: IJobSector[] = [];
   trackData: IJobTrack[] = [];
   roleData: IJobRole[] = [];
-
   keyTaskList: KeyTask[] = [];
-
-  selectedTenant: string = "";
-  selectedSector: string = "";
-  selectedTrack: string = "";
-  selectedRole: string = "";
-
-  groupedKeyData: any[] = [];
+  groupedKeyData: GroupedKeyTask[] = [];
   coreSkills: CoreSkillGap[] = [];
   tdcSkills: TdcSkillGap[] = [];
   tenantJobRoles: any[] = [];
-  isCoreEditing = false;
-  isTdcEditing = false;
+  tenantlist: any[] = [];
+  
+  // Tenant Roles tab specific
+  tenantAssignedRoles: IJobRole[] = [];
+  isEditingSkills = false;
+  roleSearchTerm = '';
+  
+  // Custom Roles tab specific
+  customRolesList: any[] = [];
 
-  // Initially dropdowns are enabled
-  isDropdownDisabled: boolean = false;
-
+  // ============================================
+  // STATE: Selections
+  // ============================================
+  selectedTenant = '';
+  selectedSector = '';
+  selectedTrack = '';
+  selectedRole = '';
+  selectedTenantId = '';
+  selectedSectorId = '';
+  selectedTrackId = '';
   selectedIds = new Set<string>();
 
-  tenantlist: any[] = []; // tenants from API
-  selectedTenantId: string | '' = ''; // two-way binding selected value
-  permissions: any;
+  // ============================================
+  // STATE: UI Modes
+  // ============================================
+  isDropdownDisabled = false;
+  isCoreEditing = false;
+  isTdcEditing = false;
+  permissions: any = {};
 
-  showSkillSettings = false;
+  // ============================================
+  // CONSTRUCTOR
+  // ============================================
+  constructor(
+    private router: Router,
+    private skillService: SkillService,
+    private tenantService: TenantService,
+    private permissionService: PermissionService
+  ) {}
 
-  constructor(private router: Router, private skillService: SkillService, private tenantService: TenantService, private permissionService: PermissionService) { }
-
+  // ============================================
+  // LIFECYCLE
+  // ============================================
   ngOnInit(): void {
-    this.loadTenant();
-    this.getSectorData();
     this.selectedTenantId = getTenantId() || '';
     this.permissions = this.permissionService.getPermission('SkillFramework');
+    this.loadTenant();
+    this.getSectorData();
   }
 
+  // ============================================
+  // COMPUTED PROPERTIES
+  // ============================================
   get hasSelection(): boolean {
     return this.selectedIds.size > 0;
   }
 
-  loadTenant() {
+  // ============================================
+  // TAB NAVIGATION
+  // ============================================
+  setActiveTab(tab: TabType): void {
+    this.activeTab = tab;
+    this.clearMessages();
+    
+    // Reset edit state when leaving Manage Skills tab
+    if (tab !== 'manage-skills') {
+      this.isEditingSkills = false;
+      this.groupedKeyData = [];
+      this.coreSkills = [];
+      this.tdcSkills = [];
+    }
+    
+    // Auto-load assigned roles when switching to Manage Skills tab
+    if (tab === 'manage-skills' && this.selectedTenantId) {
+      this.loadTenantRoles();
+    }
+  }
+
+  // ============================================
+  // MESSAGE HELPERS
+  // ============================================
+  private showSuccess(message: string): void {
+    this.successMessage = message;
+    this.errorMessage = '';
+    setTimeout(() => {
+      if (this.successMessage === message) {
+        this.successMessage = '';
+      }
+    }, 5000);
+  }
+
+  private showError(message: string): void {
+    this.errorMessage = message;
+    this.successMessage = '';
+  }
+
+  private clearMessages(): void {
+    this.successMessage = '';
+    this.errorMessage = '';
+  }
+
+  // ============================================
+  // DATA LOADING
+  // ============================================
+  loadTenant(): void {
     this.tenantService.getTenants().subscribe({
       next: (res: any) => {
         if (res.success && res.result) {
@@ -91,105 +202,399 @@ export class Skills implements OnInit {
       },
       error: (err: any) => {
         console.error('Error fetching tenants:', err);
+        this.showError('Failed to load tenants');
       }
     });
-  }
-
-  onTenantChange(event: any) {
-    const selectedOption = event.target.options[event.target.selectedIndex];
-    this.selectedTenantId = event.target.value;
-    this.selectedTenant = selectedOption.getAttribute('data-name');
-    if (this.trackSelect?.nativeElement) {
-      this.trackSelect.nativeElement.value = '';
-    }
-    if (this.sectorSelect?.nativeElement) {
-      this.sectorSelect.nativeElement.value = '';
-    }
-    this.selectedSector = '';
-    this.selectedTrack = '';
-    this.roleData = [];
-    this.selectedIds.clear();
   }
 
   getSectorData(): void {
-    const pageIndex = 0;
-    const pageSize = 0;
-
-    this.skillService.getSectorsTracksJobRoles(pageIndex, pageSize).subscribe({
+    this.isLoading = true;
+    
+    this.skillService.getSectorsTracksJobRoles(0, 0).subscribe({
       next: (res: ApiResponse<SectorApiResult>) => {
+        this.isLoading = false;
         if (!res.isError && res.statusCode === 200 && res.result?.data) {
           this.sectorData = res.result.data;
         } else {
-          this.errorMessage = 'Failed to fetch sector data';
+          this.showError('Failed to fetch sector data');
         }
       },
       error: (error) => {
-        this.errorMessage = '';
-        if (
-          error.error?.responseException?.customErrors &&
-          Array.isArray(error.error.responseException.customErrors)
-        ) {
-          for (let key of error.error.responseException.customErrors) {
-            this.errorMessage += key.reason + '\n';
-          }
-        } else {
-          this.errorMessage = 'An unexpected error occurred';
-        }
+        this.isLoading = false;
+        this.handleApiError(error, 'fetching sector data');
       }
     });
   }
 
-  onSectorChange(event: Event) {
-    const selectElement = event.target as HTMLSelectElement;
-    const selectedText = selectElement.options[selectElement.selectedIndex].text;
-    this.selectedSector = selectedText;
-    var fltSector: IJobSector[] = this.sectorData.filter((x: IJobSector) => x.sectorName == selectedText);
+  // ============================================
+  // FILTER HANDLERS
+  // ============================================
+  onTenantChange(event: Event): void {
+    const target = event.target as HTMLSelectElement;
+    const selectedOption = target.options[target.selectedIndex];
+    
+    this.selectedTenantId = target.value;
+    this.selectedTenant = selectedOption?.text || '';
+    
+    this.resetFilters();
+    this.clearMessages();
+  }
 
-    this.selectedTrack = '';
-    this.trackData = [];
-    if (fltSector.length) {
-      this.trackData = fltSector[0].trackList;
-    }
-    else {
+  onSectorChange(event: Event): void {
+    const selectElement = event.target as HTMLSelectElement;
+    const selectedValue = selectElement.value; // This is now the sectorName
+    
+    this.selectedSector = selectedValue;
+    this.selectedSectorId = '';
+    
+    // Find sector by name
+    const selectedSector = this.sectorData.find(s => s.sectorName === selectedValue);
+    if (selectedSector) {
+      this.selectedSectorId = selectedSector.sectorId.toString();
+      this.trackData = selectedSector.trackList || [];
+    } else {
       this.trackData = [];
     }
-    if (this.trackSelect?.nativeElement) {
-      this.trackSelect.nativeElement.value = '';
-    }
+    
+    // Reset track selection
+    this.selectedTrack = '';
+    this.selectedTrackId = '';
   }
 
-  onTrackChange(event: Event) {
+  onTrackChange(event: Event): void {
     const selectElement = event.target as HTMLSelectElement;
-    const selectedText = selectElement.options[selectElement.selectedIndex].text;
-    this.selectedTrack = selectedText;
+    const selectedValue = selectElement.value; // This is now the trackName
+    
+    this.selectedTrack = selectedValue;
+    
+    // Find track to get ID
+    const selectedTrack = this.trackData.find(t => t.trackName === selectedValue);
+    this.selectedTrackId = selectedTrack ? selectedTrack.trackId.toString() : '';
   }
 
-  onApplyFilter() {
-    // reset first
+  private resetFilters(): void {
+    this.selectedSector = '';
+    this.selectedTrack = '';
+    this.selectedSectorId = '';
+    this.selectedTrackId = '';
+    this.trackData = [];
+    this.roleData = [];
+    this.selectedIds.clear();
+    this.tenantAssignedRoles = [];
+    this.customRolesList = [];
+    this.roleSearchTerm = '';
+  }
+
+  // ============================================
+  // SSF BROWSER: Apply Filter
+  // ============================================
+  onApplyFilter(): void {
+    this.clearMessages();
     this.keyTaskList = [];
     this.groupedKeyData = [];
 
-    if (this.trackData.length) {
-      var fltTrack = this.trackData.filter((x: IJobTrack) => x.trackName == this.selectedTrack);
-      if (fltTrack.length) {
-        this.roleData = fltTrack[0].jobRoleList.map(roles => ({
-          ...roles,
-          isChecked: false   // initialize
-        }));
-        this.getTenantJobRoles();
-      }
-      else {
-        this.roleData = [];
-      }
+    if (!this.trackData.length) {
+      this.roleData = [];
+      return;
+    }
+
+    const selectedTrack = this.trackData.find(t => t.trackName === this.selectedTrack);
+    
+    if (selectedTrack) {
+      this.roleData = selectedTrack.jobRoleList.map(role => ({
+        ...role,
+        isChecked: false,
+        isCheckedAsignToTenant: false
+      }));
+      this.getTenantJobRoles();
+    } else {
+      this.roleData = [];
     }
   }
 
-  editSkills(roles: { jobRoleName: string }) {
-    this.selectedRole = roles.jobRoleName;
+  // ============================================
+  // SSF BROWSER: Role Selection
+  // ============================================
+  onCheckboxChange(event: Event, role: IJobRole): void {
+    event.stopPropagation();
+    const roleId = role.jobRoleId.toString();
+    
+    role.isChecked = !role.isChecked;
+    
+    if (role.isChecked) {
+      this.selectedIds.add(roleId);
+    } else {
+      this.selectedIds.delete(roleId);
+    }
+  }
+
+  onAssignToTenant(): void {
+    if (!this.hasSelection || !this.selectedTenantId) {
+      this.showError('Please select roles to assign');
+      return;
+    }
+
+    this.isAssigning = true;
+    
+    const payload = {
+      SelectedTrack: this.selectedTrack,
+      SelectedSector: this.selectedSector,
+      SelectedTenant: this.selectedTenantId,
+      SelectedRoleId: Array.from(this.selectedIds)
+    };
+
+    this.skillService.assignRolesToTenant(payload).subscribe({
+      next: () => {
+        this.isAssigning = false;
+        this.showSuccess('Roles selected for tenant successfully!');
+        this.onApplyFilter();
+      },
+      error: (err) => {
+        this.isAssigning = false;
+        this.showError('Failed to assign roles. Please try again.');
+        console.error('Assign failed:', err);
+      }
+    });
+  }
+
+  getTenantJobRoles(): void {
+    const request = {
+      sector: this.selectedSector,
+      track: this.selectedTrack,
+      tenantId: this.selectedTenantId
+    };
+
+    this.skillService.getTenantJobRoles(request).subscribe({
+      next: (res: any) => {
+        if (res.statusCode === 200) {
+          this.tenantJobRoles = res.result || [];
+          this.selectedIds.clear();
+
+          this.roleData = this.roleData.map(role => {
+            const isAssigned = this.tenantJobRoles.some(
+              (t: any) => t.jobRoleId === role.jobRoleId
+            );
+
+            if (isAssigned) {
+              this.selectedIds.add(role.jobRoleId.toString());
+            }
+
+            return {
+              ...role,
+              isChecked: isAssigned,
+              isCheckedAsignToTenant: isAssigned
+            };
+          });
+        }
+      },
+      error: (err: any) => {
+        console.error('Error fetching tenant job roles:', err);
+      }
+    });
+  }
+
+  // ============================================
+  // MANAGE SKILLS: Load Assigned Roles
+  // ============================================
+  
+  // Getter for filtered roles based on search term
+  get filteredTenantRoles(): IJobRole[] {
+    if (!this.roleSearchTerm.trim()) {
+      return this.tenantAssignedRoles;
+    }
+    const searchLower = this.roleSearchTerm.toLowerCase();
+    return this.tenantAssignedRoles.filter(role => {
+      const roleName = role.jobRoleName || role.jobRole || '';
+      const sectorName = role.sectorName || role.sector || '';
+      const trackName = role.trackName || role.track || '';
+      const description = role.jobRoleDescription || '';
+      
+      return roleName.toLowerCase().includes(searchLower) ||
+        description.toLowerCase().includes(searchLower) ||
+        sectorName.toLowerCase().includes(searchLower) ||
+        trackName.toLowerCase().includes(searchLower);
+    });
+  }
+
+  onTenantChangeManageSkills(event: Event): void {
+    const selectElement = event.target as HTMLSelectElement;
+    const selectedValue = selectElement.value;
+    const selectedText = selectElement.options[selectElement.selectedIndex].text;
+    
+    this.selectedTenantId = selectedValue;
+    this.selectedTenant = selectedText !== 'Select Tenant' ? selectedText : '';
+    this.roleSearchTerm = '';
+    
+    if (selectedValue) {
+      this.loadTenantRoles();
+    } else {
+      this.tenantAssignedRoles = [];
+    }
+  }
+
+  loadTenantRoles(): void {
+    if (!this.selectedTenantId) {
+      this.showError('Please select a tenant first');
+      return;
+    }
+
+    this.isLoading = true;
+    this.tenantAssignedRoles = [];
+
+    // Load ALL roles for tenant (no sector/track filter)
+    const request = {
+      sector: '',
+      track: '',
+      tenantId: this.selectedTenantId
+    };
+
+    console.log('Loading tenant roles with request:', request);
+
+    this.skillService.getTenantJobRoles(request).subscribe({
+      next: (res: any) => {
+        console.log('getTenantJobRoles response:', res);
+        this.isLoading = false;
+        if (res.statusCode === 200) {
+          // Get all assigned roles and enrich with sector/track info
+          const roles = res.result || [];
+          console.log('Raw roles:', roles);
+          this.tenantAssignedRoles = this.enrichRolesWithSectorTrack(roles);
+          console.log('Enriched roles:', this.tenantAssignedRoles);
+        } else {
+          this.showError('Failed to load tenant roles');
+        }
+      },
+      error: (err: any) => {
+        this.isLoading = false;
+        this.showError('Error loading tenant roles');
+        console.error('Error:', err);
+      }
+    });
+  }
+
+  // Enrich roles with sector/track info from SSF data and normalize field names
+  private enrichRolesWithSectorTrack(roles: any[]): IJobRole[] {
+    return roles.map(role => {
+      // Normalize field names - API returns jobRole, sector, track
+      // But our interface uses jobRoleName, sectorName, trackName
+      const normalizedRole = {
+        ...role,
+        jobRoleName: role.jobRoleName || role.jobRole || '',
+        sectorName: role.sectorName || role.sector || '',
+        trackName: role.trackName || role.track || '',
+        jobRoleDescription: role.jobRoleDescription || ''
+      };
+
+      // If still missing sector/track, look up from SSF data
+      if (!normalizedRole.sectorName || !normalizedRole.trackName) {
+        for (const sector of this.sectorData) {
+          for (const track of sector.trackList || []) {
+            const foundRole = (track.jobRoleList || []).find(
+              (r: any) => r.jobRoleId === role.jobRoleId || r.jobRoleName === normalizedRole.jobRoleName
+            );
+            if (foundRole) {
+              normalizedRole.sectorName = normalizedRole.sectorName || sector.sectorName;
+              normalizedRole.trackName = normalizedRole.trackName || track.trackName;
+              break;
+            }
+          }
+          if (normalizedRole.sectorName && normalizedRole.trackName) break;
+        }
+      }
+
+      return normalizedRole;
+    });
+  }
+
+  // ============================================
+  // MANAGE SKILLS: Skill Editing
+  // ============================================
+  onManageSkillsClick(role: any): void {
+    console.log('Managing skills for role:', role);
+    
+    // API returns 'sector' and 'track' (not sectorName/trackName)
+    // API returns 'jobRole' (not jobRoleName)
+    const roleSector = role.sectorName || role.sector || '';
+    const roleTrack = role.trackName || role.track || '';
+    const roleName = role.jobRoleName || role.jobRole || '';
+    
+    // Set sector/track from role object
+    if (roleSector) {
+      this.selectedSector = roleSector;
+      // Also update trackData for the sector
+      const sector = this.sectorData.find(s => s.sectorName === roleSector);
+      if (sector) {
+        this.selectedSectorId = sector.sectorId.toString();
+        this.trackData = sector.trackList || [];
+      }
+    }
+    if (roleTrack) {
+      this.selectedTrack = roleTrack;
+      const track = this.trackData.find(t => t.trackName === roleTrack);
+      if (track) {
+        this.selectedTrackId = track.trackId.toString();
+      }
+    }
+
+    // If sector/track still not set, try to find from SSF data
+    if (!this.selectedSector || !this.selectedTrack) {
+      console.log('Sector/Track not in role, searching SSF...');
+      const found = this.findRoleInSSF(role.jobRoleId, roleName);
+      if (found) {
+        console.log('Found in SSF:', found);
+        this.selectedSector = found.sectorName;
+        this.selectedTrack = found.trackName;
+        
+        const sector = this.sectorData.find(s => s.sectorName === found.sectorName);
+        if (sector) {
+          this.selectedSectorId = sector.sectorId.toString();
+          this.trackData = sector.trackList || [];
+        }
+      } else {
+        console.log('Role not found in SSF data');
+      }
+    }
+    
+    console.log('Selected Sector:', this.selectedSector, 'Track:', this.selectedTrack);
+    
+    // Create a normalized role object with jobRoleName
+    const normalizedRole = {
+      ...role,
+      jobRoleName: roleName,
+      sectorName: roleSector,
+      trackName: roleTrack
+    };
+    
+    this.editSkills(normalizedRole);
+  }
+
+  // Find role in SSF data and return sector/track
+  private findRoleInSSF(roleId: number, roleName: string): { sectorName: string; trackName: string } | null {
+    for (const sector of this.sectorData) {
+      for (const track of sector.trackList || []) {
+        const foundRole = (track.jobRoleList || []).find(
+          (r: any) => r.jobRoleId === roleId || r.jobRoleName === roleName
+        );
+        if (foundRole) {
+          return {
+            sectorName: sector.sectorName,
+            trackName: track.trackName
+          };
+        }
+      }
+    }
+    return null;
+  }
+
+  editSkills(role: IJobRole): void {
+    this.clearMessages();
+    this.selectedRole = role.jobRoleName;
+    this.isEditingSkills = true;
     this.keyTaskList = [];
     this.groupedKeyData = [];
     this.coreSkills = [];
     this.tdcSkills = [];
+    this.isLoading = true;
 
     const payload = {
       aspiredRole: this.selectedRole,
@@ -201,234 +606,190 @@ export class Skills implements OnInit {
       currentTenant: this.selectedTenantId
     };
 
+    console.log('Loading skills with payload:', payload);
+
     this.skillService.getKeyTasks(payload).subscribe({
       next: (res) => {
-        this.keyTaskList = res.result ?? [];  // ✅ no error now
-        if (this.keyTaskList.length == 0) {
-          this.groupedKeyData.push({
-            criticalWorkFunction: 'Critical Work Function',
-            oldValue: '',
-            isEdited: true,
-            tasks: [
-              {
-                keyTaskSkill: 'Key Task Skill',
-                oldValue: '',
-                isAlreadyCreated: false,
-                isNew: true,
-                isEdited: true
-              }
-            ]
-          });
-
-          this.coreSkills.push({
-            coreSkill: 'New Core Skill',
-            proficiencyLevel: '1',
-            isEdited: true,
-            isNew: true
-          });
-
-          this.tdcSkills.push({
-            tdcSkill: 'New TDC Skill',
-            tdcProficiencyLevel: 'Basic',
-            isNew: true,
-            isEdited: true
-          });
-        }
-        else {
+        console.log('getKeyTasks response:', res);
+        this.keyTaskList = res.result ?? [];
+        
+        if (this.keyTaskList.length === 0) {
+          console.log('No key tasks found, creating default structure');
+          this.createDefaultSkillStructure();
+        } else {
           this.groupedKeyData = this.groupKeyTasks(this.keyTaskList);
           this.fetchSkillGapAnalysis();
         }
+        
+        this.isLoading = false;
       },
       error: (err) => {
-        console.error("API Error:", err);
+        this.isLoading = false;
+        this.showError('Failed to load skill data');
+        console.error('API Error:', err);
       }
     });
   }
 
-  // skills.component.ts
+  private createDefaultSkillStructure(): void {
+    // No skills found from SSF - create empty editable structure
+    this.groupedKeyData = [{
+      criticalWorkFunction: '',
+      oldValue: '',
+      isEdited: false,
+      isEditing: true,
+      tasks: [{
+        keyTaskSkill: '',
+        oldValue: '',
+        isAlreadyCreated: false,
+        isNew: true,
+        isEdited: false
+      }]
+    }];
+
+    this.coreSkills = [];
+    this.tdcSkills = [];
+
+    this.isCoreEditing = true;
+    this.isTdcEditing = true;
+    
+    // Show info message
+    this.showSuccess('No existing skills found. You can add skills manually or they will be populated from SSF.');
+  }
+
   fetchSkillGapAnalysis(): void {
     const payload = {
       aspiredRole: this.selectedRole,
       aspiredTrack: this.selectedTrack,
       aspiredSector: this.selectedSector,
-      currentRole: "Select Role",
-      currentSector: "Select Sector",
-      currentTrack: "Select Track",
+      currentRole: 'Select Role',
+      currentSector: 'Select Sector',
+      currentTrack: 'Select Track',
       currentTenant: this.selectedTenantId
     };
 
+    console.log('Fetching skill gap analysis with payload:', payload);
+
     this.skillService.getSkillGapAnalysis(payload).subscribe({
       next: (res) => {
-        this.coreSkills = res.coreSkills;
-        this.tdcSkills = res.tdcSkills;
+        console.log('Skill gap analysis response:', res);
+        this.coreSkills = res.coreSkills || [];
+        this.tdcSkills = res.tdcSkills || [];
       },
       error: (err) => {
-        console.error('Error fetching skill gap analysis', err);
+        console.error('Error fetching skill gap analysis:', err);
       }
     });
   }
 
-  private groupKeyTasks(list: any[]): GroupedKeyTask[] {
+  private groupKeyTasks(list: KeyTask[]): GroupedKeyTask[] {
     if (!Array.isArray(list)) {
-      console.warn("Expected an array but got:", list);
       return [];
     }
 
-    return Object.values(
-      list.reduce((acc: any, item: any) => {
-        if (!acc[item.criticalWorkFunction]) {
-          acc[item.criticalWorkFunction] = {
-            criticalWorkFunction: item.criticalWorkFunction,
-            oldValue: item.criticalWorkFunction,   // ✅ track original CWF
-            isEdited: false,
-            tasks: []
-          };
-        }
-        acc[item.criticalWorkFunction].tasks.push({
-          keyTaskSkill: item.keyTaskSkill,
-          oldValue: item.keyTaskSkill,            // ✅ track original value
-          isAlreadyCreated: item.isAlreadyCreated,
-          isNew: false,
-          isEdited: false
-        });
-        return acc;
-      }, {})
-    );
-  }
-
-
-  onCheckboxChange(event: Event, role: any) {
-    const checkbox = event.target as HTMLInputElement;
-    const roleId = role.jobRoleId.toString();   // force string
-
-    if (checkbox.checked) {
-      this.selectedIds.add(roleId);
-    } else {
-      this.selectedIds.delete(roleId);
-    }
-  }
-
-  onAssignToTenant() {
-    const payload = {
-      SelectedTrack: this.selectedTrack,
-      SelectedSector: this.selectedSector,
-      SelectedTenant: this.selectedTenantId,
-      SelectedRoleId: Array.from(this.selectedIds) // 🔑 convert to array
-    };
-
-
-    this.skillService.assignRolesToTenant(payload).subscribe({
-      next: (response) => {
-        this.onApplyFilter(); // Refresh the list
-      },
-      error: (err) => {
-        console.log('❌ Assign failed:', err);
+    const grouped = list.reduce((acc: Record<string, GroupedKeyTask>, item) => {
+      const cwf = item.criticalWorkFunction || 'Uncategorized';
+      
+      if (!acc[cwf]) {
+        acc[cwf] = {
+          criticalWorkFunction: cwf,
+          oldValue: cwf,
+          isEdited: false,
+          isEditing: false,
+          tasks: []
+        };
       }
-    });
+      
+      acc[cwf].tasks.push({
+        keyTaskSkill: item.keyTaskSkill,
+        oldValue: item.keyTaskSkill,
+        isAlreadyCreated: item.isAlreadyCreated,
+        isNew: false,
+        isEdited: false
+      });
+      
+      return acc;
+    }, {});
+
+    return Object.values(grouped);
   }
 
-  getTenantJobRoles() {
-    const request = {
-      sector: this.selectedSector,
-      track: this.selectedTrack,
-      tenantId: this.selectedTenantId
-    };
-
-    this.skillService.getTenantJobRoles(request).subscribe({
-      next: (res: any) => {
-        if (res.statusCode === 200) {
-          this.tenantJobRoles = res.result;
-
-          // clear old selections before re-adding
-          this.selectedIds.clear();
-
-          // Compare with existing roleData and sync selectedIds
-          this.roleData = this.roleData.map(roles => {
-            const isSelected = this.tenantJobRoles.some(
-              (t: any) => t.jobRoleId === roles.jobRoleId
-            );
-
-            if (isSelected) {
-              this.selectedIds.add(roles.jobRoleId.toString());
-            }
-
-            return {
-              ...roles,
-              isChecked: isSelected,
-              isCheckedAsignToTenant: isSelected
-            };
-          });
-
-        } else {
-          console.log(res.message);
-        }
-      },
-      error: (err: any) => {
-        console.error('Error fetching job roles:', err);
-      }
-    });
+  exitEditMode(): void {
+    this.isEditingSkills = false;
+    this.groupedKeyData = [];
+    this.coreSkills = [];
+    this.tdcSkills = [];
+    this.selectedRole = '';
+    this.isCoreEditing = false;
+    this.isTdcEditing = false;
+    this.clearMessages();
   }
 
-
-  toggleEdit(taskGroup: any) {
+  // ============================================
+  // EDIT TOGGLES
+  // ============================================
+  toggleEdit(taskGroup: GroupedKeyTask): void {
     taskGroup.isEditing = !taskGroup.isEditing;
   }
 
+  toggleCoreEdit(): void {
+    this.isCoreEditing = !this.isCoreEditing;
+  }
 
-  addTask(taskGroup: any) {
+  toggleTdcEdit(): void {
+    this.isTdcEditing = !this.isTdcEditing;
+  }
+
+  // ============================================
+  // ADD/REMOVE OPERATIONS
+  // ============================================
+  addTask(taskGroup: GroupedKeyTask): void {
     if (!taskGroup.tasks) taskGroup.tasks = [];
     taskGroup.tasks.push({
       keyTaskSkill: 'New Key Task',
-      isNew: true
+      oldValue: '',
+      isNew: true,
+      isEdited: false,
+      isAlreadyCreated: false
     });
   }
 
-  addCWFKeyTask() {
+  removeTask(taskGroup: GroupedKeyTask, index: number): void {
+    taskGroup.tasks.splice(index, 1);
+  }
+
+  addCWFKeyTask(): void {
     this.groupedKeyData.push({
       criticalWorkFunction: 'Critical Work Function',
       oldValue: '',
       isEdited: true,
-      tasks: [
-        {
-          keyTaskSkill: 'Key Task Skill',
-          oldValue: '',
-          isAlreadyCreated: false,
-          isNew: true,
-          isEdited: true
-        }
-      ]
+      isEditing: true,
+      tasks: [{
+        keyTaskSkill: 'Key Task Skill',
+        oldValue: '',
+        isAlreadyCreated: false,
+        isNew: true,
+        isEdited: true
+      }]
     });
 
-    setTimeout(() => {
-      this.triggerButtonClick();
-    }, 20);
+    setTimeout(() => this.triggerButtonClick(), 20);
   }
 
-  removeTask(taskGroup: any, index: number) {
-    taskGroup.tasks.splice(index, 1);
-  }
-
-  toggleCoreEdit() {
-    this.isCoreEditing = !this.isCoreEditing;
-  }
-
-  addCoreSkill() {
+  addCoreSkill(): void {
     this.coreSkills.push({
       coreSkill: 'New Core Skill',
       proficiencyLevel: '1',
-      isNew: true
+      isNew: true,
+      isEdited: false
     });
   }
 
-  removeCoreSkill(skill: any) {
+  removeCoreSkill(skill: CoreSkillGap): void {
     this.coreSkills = this.coreSkills.filter(s => s !== skill);
   }
 
-  toggleTdcEdit() {
-    this.isTdcEditing = !this.isTdcEditing;
-  }
-
-  addTdcSkill() {
+  addTdcSkill(): void {
     this.tdcSkills.push({
       tdcSkill: 'New TDC Skill',
       tdcProficiencyLevel: 'Basic',
@@ -437,69 +798,70 @@ export class Skills implements OnInit {
     });
   }
 
-  removeTdcSkill(skill: any) {
+  removeTdcSkill(skill: TdcSkillGap): void {
     this.tdcSkills = this.tdcSkills.filter(s => s !== skill);
   }
 
-  onCwfChange(group: GroupedKeyTask, event: Event) {
+  // ============================================
+  // CHANGE HANDLERS
+  // ============================================
+  onCwfChange(group: GroupedKeyTask, event: Event): void {
     const newValue = (event.target as HTMLElement).textContent?.trim() || '';
     if (group.criticalWorkFunction !== newValue) {
-      if (!group.isEdited) group.oldValue = group.criticalWorkFunction;  // ✅ store old
+      if (!group.isEdited) group.oldValue = group.criticalWorkFunction;
       group.criticalWorkFunction = newValue;
       group.isEdited = true;
     }
   }
 
-  // Key Task
-  onKeyTaskEdit(task: KeyTask, event: Event) {
-    const target = event.target as HTMLElement;
-    const newValue = target.textContent?.trim() || '';
-
+  onKeyTaskEdit(task: KeyTask, event: Event): void {
+    const newValue = (event.target as HTMLElement).textContent?.trim() || '';
+    
     if (task.isNew) {
-      // For new tasks: always update the skill
       task.keyTaskSkill = newValue;
-    } else {
-      // For existing tasks: update + track old value
-      if (task.keyTaskSkill !== newValue) {
-        if (!task.isEdited) task.oldValue = task.keyTaskSkill;   // ✅ store old
-        task.keyTaskSkill = newValue;
-        task.isEdited = true;
-      }
+    } else if (task.keyTaskSkill !== newValue) {
+      if (!task.isEdited) task.oldValue = task.keyTaskSkill;
+      task.keyTaskSkill = newValue;
+      task.isEdited = true;
     }
   }
 
-  onCoreSkillChange(skill: CoreSkillGap, event: Event) {
-    const el = event.target as HTMLElement;
-    const newValue = el.textContent?.trim() || '';
+  onCoreSkillChange(skill: CoreSkillGap, event: Event): void {
+    const newValue = (event.target as HTMLElement).textContent?.trim() || '';
     if (skill.coreSkill !== newValue) {
-      if (!skill.isEdited) skill.oldValue = skill.coreSkill;   // ✅ store old
+      if (!skill.isEdited) skill.oldValue = skill.coreSkill;
       skill.coreSkill = newValue;
       skill.isEdited = true;
     }
   }
 
-  onTdcSkillChange(skill: TdcSkillGap, event: Event) {
-    const el = event.target as HTMLElement;
-    const newValue = el.textContent?.trim() || '';
+  onTdcSkillChange(skill: TdcSkillGap, event: Event): void {
+    const newValue = (event.target as HTMLElement).textContent?.trim() || '';
     if (skill.tdcSkill !== newValue) {
-      if (!skill.isEdited) skill.oldValue = skill.tdcSkill;   // ✅ store old
+      if (!skill.isEdited) skill.oldValue = skill.tdcSkill;
       skill.tdcSkill = newValue;
       skill.isEdited = true;
     }
   }
 
-  onTdcProficiencyChange(skill: TdcSkillGap) {
-    skill.isEdited = true;   // ✅ mark edited when proficiency changes
+  onCoreProficiencyChange(skill: CoreSkillGap): void {
+    skill.isEdited = true;
   }
 
-  onCoreProficiencyChange(skill: CoreSkillGap) {
-    skill.isEdited = true;   // ✅ mark edited when proficiency changes
+  onTdcProficiencyChange(skill: TdcSkillGap): void {
+    skill.isEdited = true;
   }
 
+  // ============================================
+  // SAVE CHANGES
+  // ============================================
   onSubmitKeyTaskChanges(): void {
+    this.isSaving = true;
+    this.clearMessages();
+
     const changedKeyTasks = this.groupedKeyData
-      .map((group: GroupedKeyTask) => {
-        const changedTasks = group.tasks.filter((t: KeyTask) => t.isNew || t.isEdited);
+      .map(group => {
+        const changedTasks = group.tasks.filter(t => t.isNew || t.isEdited);
         if (group.isEdited || changedTasks.length > 0) {
           return {
             criticalWorkFunction: group.criticalWorkFunction,
@@ -512,14 +874,13 @@ export class Skills implements OnInit {
               isEdited: t.isEdited ?? false
             }))
           };
-        } else {
-          return null;
         }
+        return null;
       })
-      .filter((group): group is any => group !== null);
+      .filter((group): group is NonNullable<typeof group> => group !== null);
 
     const changedCoreSkills = this.coreSkills
-      .filter((s: CoreSkillGap) => s.isNew || s.isEdited)
+      .filter(s => s.isNew || s.isEdited)
       .map(s => ({
         coreSkill: s.coreSkill,
         oldValue: s.oldValue ?? null,
@@ -529,7 +890,7 @@ export class Skills implements OnInit {
       }));
 
     const changedTdcSkills = this.tdcSkills
-      .filter((s: TdcSkillGap) => s.isNew || s.isEdited)
+      .filter(s => s.isNew || s.isEdited)
       .map(s => ({
         tdcSkill: s.tdcSkill,
         oldValue: s.oldValue ?? null,
@@ -537,6 +898,7 @@ export class Skills implements OnInit {
         isNew: s.isNew ?? false,
         isEdited: s.isEdited ?? false
       }));
+
     const payload = {
       tenantInfo: {
         selectedTenant: this.selectedTenantId,
@@ -550,53 +912,50 @@ export class Skills implements OnInit {
     };
 
     this.skillService.updateSkills(payload).subscribe({
-      next: (res) => {
-        this.resetFlags();
-        this.groupedKeyData.forEach(group => group.isEditing = false);
-        this.isCoreEditing = false;
-        this.isTdcEditing = false;
-
+      next: () => {
+        this.isSaving = false;
+        this.showSuccess('Skills saved successfully!');
+        this.resetEditFlags();
+        
         // Refresh data
-        this.editSkills({ jobRoleName: this.selectedRole });
-        this.isDropdownDisabled = false;
+        this.editSkills({ jobRoleName: this.selectedRole } as IJobRole);
       },
       error: (err) => {
+        this.isSaving = false;
+        this.showError('Failed to save changes. Please try again.');
         console.error('Update failed:', err);
       }
     });
   }
 
-
-  resetFlags(): void {
-    // Reset Key Tasks
-    this.groupedKeyData.forEach((group: GroupedKeyTask & { isEdited?: boolean }) => {
-      group.isEdited = false; // reset CWF edit flag
-      group.tasks.forEach((task: KeyTask) => {
+  private resetEditFlags(): void {
+    this.groupedKeyData.forEach(group => {
+      group.isEdited = false;
+      group.isEditing = false;
+      group.tasks.forEach(task => {
         task.isNew = false;
         task.isEdited = false;
       });
     });
 
-    // Reset Core Skills
-    this.coreSkills.forEach((skill: CoreSkillGap) => {
+    this.coreSkills.forEach(skill => {
       skill.isNew = false;
       skill.isEdited = false;
     });
 
-    // Reset TDC Skills
-    this.tdcSkills.forEach((skill: TdcSkillGap) => {
+    this.tdcSkills.forEach(skill => {
       skill.isNew = false;
       skill.isEdited = false;
     });
+
+    this.isCoreEditing = false;
+    this.isTdcEditing = false;
   }
 
-  toggleSkillSettings() {
-    this.showSkillSettings = !this.showSkillSettings;
-  }
-
-
-  // Called when child component emits 'added'
-  onRoleAdded(newRoleData: any) {
+  // ============================================
+  // CUSTOM ROLES HANDLERS (from child component)
+  // ============================================
+  onRoleAdded(newRoleData: any): void {
     this.selectedRole = newRoleData.roleName;
     this.selectedTenant = this.tenantlist.find(
       t => t.tenantId.toString() === newRoleData.tenantId
@@ -605,77 +964,162 @@ export class Skills implements OnInit {
     this.selectedTenantId = newRoleData.tenantId.toString();
     this.selectedSector = newRoleData.sectorName;
     this.selectedTrack = newRoleData.trackName;
-    // ✅ Use new function to pre-select sector & track
+    
+    // Reload custom roles list
+    this.loadCustomRoles();
+    
+    // Switch to Manage Skills tab and edit the new role
+    this.setActiveTab('manage-skills');
     this.getSectorDataForSelection(newRoleData.sectorName, newRoleData.trackName);
-    this.editSkills({ jobRoleName: newRoleData.roleName });
-    this.showSkillSettings = false;
-    this.isDropdownDisabled = true;
-    setTimeout(() => {
-      this.triggerButtonClick();
-    }, 200);
+    this.editSkills({ jobRoleName: newRoleData.roleName } as IJobRole);
+    
+    setTimeout(() => this.triggerButtonClick(), 200);
 
     this.isTdcEditing = true;
     this.isCoreEditing = true;
+    this.showSuccess('Role added successfully! Now configure the skills.');
   }
 
-  triggerButtonClick() {
-    // Wait for Angular to render the new element before clicking Edit
-    setTimeout(() => {
-      const buttons = this.editButtons.toArray();
-      const lastButton = buttons[buttons.length - 1];
-      if (lastButton) {
-        lastButton.nativeElement.click(); // simulate edit click
+  onChildCancelled(): void {
+    // Stay on current tab
+  }
+
+  loadCustomRoles(): void {
+    if (!this.selectedTenantId) {
+      this.showError('Please select a tenant first');
+      return;
+    }
+
+    this.isLoading = true;
+    this.customRolesList = [];
+
+    const request = {
+      sector: this.selectedSector || '',
+      track: this.selectedTrack || '',
+      tenantId: this.selectedTenantId
+    };
+
+    this.skillService.getTenantJobRoles(request).subscribe({
+      next: (res: any) => {
+        this.isLoading = false;
+        if (res.statusCode === 200) {
+          // Filter only custom roles (addedByUser === 1)
+          const allRoles = res.result || [];
+          this.customRolesList = allRoles.filter((role: any) => role.addedByUser === 1);
+        } else {
+          this.showError('Failed to load custom roles');
+        }
+      },
+      error: (err: any) => {
+        this.isLoading = false;
+        this.showError('Error loading custom roles');
+        console.error('Error:', err);
       }
     });
   }
 
-  getSectorDataForSelection(sectorName?: string, trackName?: string): void {
-    const pageIndex = 0;
-    const pageSize = 0;
+  editCustomRole(role: any): void {
+    // Switch to Manage Skills tab and edit the role
+    this.selectedRole = role.jobRoleName;
+    this.setActiveTab('manage-skills');
+    this.editSkills(role);
+  }
 
-    this.skillService.getSectorsTracksJobRoles(pageIndex, pageSize).subscribe({
+  deleteCustomRole(role: any): void {
+    if (!confirm(`Are you sure you want to delete "${role.jobRoleName}"?`)) {
+      return;
+    }
+
+    this.skillService.deleteSectorTrackRole(role.jobRoleId).subscribe({
+      next: (res: any) => {
+        if (res.statusCode === 200 || !res.isError) {
+          this.showSuccess(`"${role.jobRoleName}" deleted successfully`);
+          this.loadCustomRoles();
+        } else {
+          this.showError('Failed to delete role');
+        }
+      },
+      error: (err: any) => {
+        this.showError('Error deleting role');
+        console.error('Error:', err);
+      }
+    });
+  }
+
+  private getSectorDataForSelection(sectorName: string, trackName: string): void {
+    this.skillService.getSectorsTracksJobRoles(0, 0).subscribe({
       next: (res: ApiResponse<SectorApiResult>) => {
         if (!res.isError && res.statusCode === 200 && res.result?.data) {
           this.sectorData = res.result.data;
-
-          // ✅ Wait until Angular renders the dropdowns
-          // 👇 Delay preselect only until sector list is ready
           Promise.resolve().then(() => {
-            this.preselectSectorAndTrack(this.selectedSector, this.selectedTrack);
+            this.preselectSectorAndTrack(sectorName, trackName);
           });
-        } else {
-          this.errorMessage = 'Failed to fetch sector data';
         }
       },
       error: (error) => {
-        this.errorMessage = 'An unexpected error occurred';
-        console.error(error);
+        console.error('Error:', error);
       }
     });
   }
 
-  preselectSectorAndTrack(sectorName: string, trackName: string) {
+  private preselectSectorAndTrack(sectorName: string, trackName: string): void {
     this.selectedSector = sectorName;
     const sector = this.sectorData.find(s => s.sectorName === sectorName);
     if (sector) {
+      this.selectedSectorId = sector.sectorId.toString();
       this.trackData = sector.trackList;
       Promise.resolve().then(() => {
         this.selectedTrack = trackName || '';
+        const track = this.trackData.find(t => t.trackName === trackName);
+        if (track) {
+          this.selectedTrackId = track.trackId.toString();
+        }
       });
     }
   }
 
-  // Called when child component emits 'cancelled'
-  onChildCancelled() {
-    this.showSkillSettings = false;
+  // ============================================
+  // UTILITIES
+  // ============================================
+  onResetAll(): void {
+    this.clearMessages();
+    this.resetFilters();
+    this.groupedKeyData = [];
+    this.coreSkills = [];
+    this.tdcSkills = [];
+    this.selectedRole = '';
     this.isDropdownDisabled = false;
+    this.isCoreEditing = false;
+    this.isTdcEditing = false;
+    this.isEditingSkills = false;
+    this.tenantAssignedRoles = [];
+    this.customRolesList = [];
+    this.activeTab = 'browse-roles';
+    
+    this.getSectorData();
   }
 
-  onRestAllSelection() {
-    const currentUrl = this.router.url;
-    this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
-      this.router.navigate([currentUrl]);
+  private triggerButtonClick(): void {
+    setTimeout(() => {
+      const buttons = this.editButtons.toArray();
+      const lastButton = buttons[buttons.length - 1];
+      if (lastButton) {
+        lastButton.nativeElement.click();
+      }
     });
   }
 
+  private handleApiError(error: any, context: string): void {
+    let message = `Error ${context}`;
+    
+    if (error.error?.responseException?.customErrors) {
+      const errors = error.error.responseException.customErrors;
+      if (Array.isArray(errors)) {
+        message = errors.map((e: any) => e.reason).join('. ');
+      }
+    }
+    
+    this.showError(message);
+    console.error(`Error ${context}:`, error);
+  }
 }
