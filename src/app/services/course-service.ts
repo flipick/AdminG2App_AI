@@ -88,6 +88,7 @@ export class CourseService {
         );
     }
   }
+  
 
   assignTenantsToCourses(payload: any): Observable<any> {
     return this.http.post<any>(`${apiUrl}/Course/AssignTenantsToCourses`, payload);
