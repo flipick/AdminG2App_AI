@@ -1,0 +1,326 @@
+<!-- Add Tool Modal - Skills Framework Tools Tab -->
+<!-- Usage: Include in skills.component.html and call openAddToolModal() -->
+
+<div class="modal-overlay" *ngIf="isModalOpen" (click)="closeModal()">
+  <div class="modal-container" (click)="$event.stopPropagation()">
+    
+    <!-- Modal Header -->
+    <div class="modal-header">
+      <div class="modal-title-group">
+        <svg class="modal-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+        </svg>
+        <h2 class="modal-title">{{ isEditMode ? 'Edit Tool' : 'Add Tool' }}</h2>
+      </div>
+      <button class="close-btn" (click)="closeModal()" aria-label="Close modal">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="modal-body">
+      
+      <!-- Tool Information Section -->
+      <div class="form-section">
+        <div class="section-header">
+          <h3 class="section-title">Tool Information</h3>
+          <p class="section-description">Define the tool or technology required for this role</p>
+        </div>
+        
+        <div class="form-grid">
+          <!-- Tool Name -->
+          <div class="form-group">
+            <label class="form-label required">Tool Name</label>
+            <input 
+              type="text" 
+              class="form-input"
+              [(ngModel)]="toolForm.toolName"
+              placeholder="e.g., Java, Angular, AWS, Docker"
+              [disabled]="isEditMode"
+              maxlength="200"
+            />
+          </div>
+
+          <!-- Tool Category -->
+          <div class="form-group">
+            <label class="form-label required">Category</label>
+            <select class="form-select" [(ngModel)]="toolForm.toolCategory">
+              <option value="">Select a category</option>
+              <option value="Programming Language">Programming Language</option>
+              <option value="Frontend Framework">Frontend Framework</option>
+              <option value="Backend Framework">Backend Framework</option>
+              <option value="Cloud Platform">Cloud Platform</option>
+              <option value="Database">Database</option>
+              <option value="DevOps Tool">DevOps Tool</option>
+              <option value="IDE/Editor">IDE/Editor</option>
+              <option value="Testing Tool">Testing Tool</option>
+              <option value="Version Control">Version Control</option>
+              <option value="Collaboration Tool">Collaboration Tool</option>
+              <option value="Design Tool">Design Tool</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <!-- Required Level -->
+          <div class="form-group">
+            <label class="form-label required">Required Proficiency Level</label>
+            <select class="form-select" [(ngModel)]="toolForm.requiredLevel" (change)="onLevelChange()">
+              <option value="">Select level</option>
+              <option value="Level 1">Level 1 - Awareness</option>
+              <option value="Level 2">Level 2 - Beginner</option>
+              <option value="Level 3">Level 3 - Intermediate</option>
+              <option value="Level 4">Level 4 - Advanced</option>
+              <option value="Level 5">Level 5 - Expert</option>
+            </select>
+          </div>
+
+          <!-- Estimated Hours -->
+          <div class="form-group">
+            <label class="form-label">Estimated Learning Hours</label>
+            <input 
+              type="number" 
+              class="form-input"
+              [(ngModel)]="toolForm.estimatedHours"
+              placeholder="e.g., 40"
+              min="1"
+              max="500"
+            />
+            <span class="form-hint">Hours needed to reach required level</span>
+          </div>
+        </div>
+
+        <!-- Keywords -->
+        <div class="form-group" style="margin-top: 1rem;">
+          <label class="form-label">Keywords</label>
+          <input 
+            type="text" 
+            class="form-input"
+            [(ngModel)]="toolForm.keywords"
+            placeholder="e.g., java, jdk, spring, oop (comma-separated)"
+          />
+          <span class="form-hint">Used for search and AI content generation</span>
+        </div>
+
+        <!-- Description -->
+        <div class="form-group" style="margin-top: 1rem;">
+          <label class="form-label">Description</label>
+          <textarea 
+            class="form-textarea"
+            [(ngModel)]="toolForm.description"
+            placeholder="Brief description of the tool and its relevance to this role..."
+            rows="2"
+            maxlength="500"
+          ></textarea>
+        </div>
+
+        <!-- Is Required Toggle -->
+        <div class="form-group" style="margin-top: 0.75rem;">
+          <label class="checkbox-wrapper">
+            <input type="checkbox" [(ngModel)]="toolForm.isRequired" />
+            <span class="checkbox-custom"></span>
+            <span class="checkbox-text">Required for this role</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div class="section-divider"></div>
+
+      <!-- Course Generation Section -->
+      <div class="form-section">
+        <div class="section-header">
+          <div class="section-title-row">
+            <h3 class="section-title">Training Content</h3>
+            <span class="badge badge-new">NEW</span>
+          </div>
+          <p class="section-description">
+            Generate or link training courses for this tool
+          </p>
+        </div>
+
+        <!-- Generation Options -->
+        <div class="generation-options">
+          
+          <!-- Option 1: Video Studio (Coming Soon) -->
+          <div 
+            class="option-card option-featured"
+            [class.selected]="selectedOption === 'video-studio'"
+            (click)="selectOption('video-studio')"
+          >
+            <div class="option-radio">
+              <div class="radio-outer" [class.checked]="selectedOption === 'video-studio'">
+                <div class="radio-inner"></div>
+              </div>
+            </div>
+            <div class="option-icon option-icon-video">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M3 6a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V6z"/>
+              </svg>
+            </div>
+            <div class="option-content">
+              <div class="option-header">
+                <span class="option-title">Generate with Video Studio</span>
+                <span class="badge badge-coming-soon">Coming Soon</span>
+              </div>
+              <p class="option-description">
+                AI-powered course generation with professional narration
+              </p>
+              <div class="option-tags">
+                <span class="option-tag">🤖 AI Generated</span>
+                <span class="option-tag">⏱️ Under 10 min</span>
+                <span class="option-tag">📦 SCORM</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Option 2: Link External -->
+          <div 
+            class="option-card"
+            [class.selected]="selectedOption === 'external'"
+            (click)="selectOption('external')"
+          >
+            <div class="option-radio">
+              <div class="radio-outer" [class.checked]="selectedOption === 'external'">
+                <div class="radio-inner"></div>
+              </div>
+            </div>
+            <div class="option-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+              </svg>
+            </div>
+            <div class="option-content">
+              <span class="option-title">Link External Course</span>
+              <p class="option-description">
+                LinkedIn Learning, Coursera, Udemy, etc.
+              </p>
+            </div>
+          </div>
+
+          <!-- Option 3: Upload SCORM -->
+          <div 
+            class="option-card"
+            [class.selected]="selectedOption === 'upload'"
+            (click)="selectOption('upload')"
+          >
+            <div class="option-radio">
+              <div class="radio-outer" [class.checked]="selectedOption === 'upload'">
+                <div class="radio-inner"></div>
+              </div>
+            </div>
+            <div class="option-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+              </svg>
+            </div>
+            <div class="option-content">
+              <span class="option-title">Upload SCORM Package</span>
+              <p class="option-description">
+                Upload existing e-learning content
+              </p>
+            </div>
+          </div>
+
+          <!-- Option 4: Link Existing -->
+          <div 
+            class="option-card"
+            [class.selected]="selectedOption === 'existing'"
+            (click)="selectOption('existing')"
+          >
+            <div class="option-radio">
+              <div class="radio-outer" [class.checked]="selectedOption === 'existing'">
+                <div class="radio-inner"></div>
+              </div>
+            </div>
+            <div class="option-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+              </svg>
+            </div>
+            <div class="option-content">
+              <span class="option-title">Link Existing LMS Course</span>
+              <p class="option-description">
+                Map to a course already in your library
+              </p>
+            </div>
+          </div>
+
+          <!-- Option 5: Skip -->
+          <div 
+            class="option-card option-skip"
+            [class.selected]="selectedOption === 'none'"
+            (click)="selectOption('none')"
+          >
+            <div class="option-radio">
+              <div class="radio-outer" [class.checked]="selectedOption === 'none'">
+                <div class="radio-inner"></div>
+              </div>
+            </div>
+            <div class="option-content">
+              <span class="option-title">Skip for now</span>
+              <p class="option-description">
+                Add the tool without linking a course. You can add courses later.
+              </p>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Video Studio Coming Soon Message -->
+        <div class="coming-soon-banner" *ngIf="selectedOption === 'video-studio'">
+          <div class="banner-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 16v-4M12 8h.01"/>
+            </svg>
+          </div>
+          <div class="banner-content">
+            <h4 class="banner-title">Video Studio Integration Coming Soon!</h4>
+            <p class="banner-text">
+              We're building an AI-powered course generation system that will create 
+              professional training videos in minutes. Features include:
+            </p>
+            <ul class="banner-features">
+              <li>AI-generated scripts based on tool and proficiency level</li>
+              <li>Professional narration with ElevenLabs voices</li>
+              <li>Automatic SCORM package creation</li>
+              <li>Built-in assessments and quizzes</li>
+            </ul>
+            <div class="banner-action">
+              <button class="btn-notify" (click)="notifyMe($event)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                Notify me when ready
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeModal()">
+        Cancel
+      </button>
+      <button 
+        class="btn btn-primary" 
+        (click)="saveTool()"
+        [disabled]="!isFormValid() || isSaving"
+      >
+        <span *ngIf="!isSaving">{{ getButtonText() }}</span>
+        <span *ngIf="isSaving" class="btn-loading">
+          <svg class="spinner" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="30" stroke-dashoffset="10"/>
+          </svg>
+          Saving...
+        </span>
+      </button>
+    </div>
+
+  </div>
+</div>

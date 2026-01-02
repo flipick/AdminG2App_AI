@@ -1,0 +1,625 @@
+/* ==============================================
+   ADD TOOL MODAL - SKILLS FRAMEWORK
+   Matches Flipick/G2 Design System
+   ============================================== */
+
+/* CSS Variables (matching learning-goals component) */
+:root {
+  --primary-color: #444ce7;
+  --primary-light: rgba(68, 76, 231, 0.1);
+  --primary-dark: #3538cd;
+  --secondary-color: #2dd4bf;
+  --danger-color: #ef4444;
+  --warning-color: #f59e0b;
+  --warning-light: #fef3c7;
+  --warning-dark: #d97706;
+  --success-color: #10b981;
+  --success-light: rgba(16, 185, 129, 0.1);
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+}
+
+/* ==============================================
+   MODAL OVERLAY & CONTAINER
+   ============================================== */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(17, 24, 39, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-container {
+  background: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  max-width: 640px;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==============================================
+   MODAL HEADER
+   ============================================== */
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--gray-200);
+  background: var(--gray-50);
+}
+
+.modal-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.modal-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--primary-color);
+}
+
+.modal-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--gray-900);
+  margin: 0;
+}
+
+.close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  background: transparent;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  color: var(--gray-500);
+  transition: all 0.15s ease;
+}
+
+.close-btn:hover {
+  background-color: var(--gray-200);
+  color: var(--gray-700);
+}
+
+/* ==============================================
+   MODAL BODY
+   ============================================== */
+
+.modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* ==============================================
+   FORM SECTIONS
+   ============================================== */
+
+.form-section {
+  margin-bottom: 1.5rem;
+}
+
+.section-header {
+  margin-bottom: 1rem;
+}
+
+.section-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.section-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  margin: 0;
+}
+
+.section-description {
+  font-size: 0.8125rem;
+  color: var(--gray-500);
+  margin: 0.25rem 0 0 0;
+}
+
+.section-divider {
+  height: 1px;
+  background: var(--gray-200);
+  margin: 1.5rem 0;
+}
+
+/* ==============================================
+   FORM ELEMENTS
+   ============================================== */
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 480px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.form-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--gray-700);
+}
+
+.form-label.required::after {
+  content: ' *';
+  color: var(--danger-color);
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--gray-900);
+  background-color: white;
+  border: 1px solid var(--gray-300);
+  border-radius: 0.375rem;
+  transition: all 0.15s ease;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.form-input:disabled {
+  background-color: var(--gray-100);
+  color: var(--gray-500);
+  cursor: not-allowed;
+}
+
+.form-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 1.25rem;
+  padding-right: 2.5rem;
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.form-hint {
+  font-size: 0.75rem;
+  color: var(--gray-400);
+}
+
+/* Checkbox */
+.checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--gray-700);
+}
+
+.checkbox-wrapper input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.checkbox-custom {
+  width: 1rem;
+  height: 1rem;
+  border: 1.5px solid var(--gray-300);
+  border-radius: 0.25rem;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.checkbox-wrapper input:checked + .checkbox-custom {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.checkbox-wrapper input:checked + .checkbox-custom::after {
+  content: '';
+  width: 0.5rem;
+  height: 0.25rem;
+  border-left: 2px solid white;
+  border-bottom: 2px solid white;
+  transform: rotate(-45deg) translateY(-1px);
+}
+
+.checkbox-wrapper input:focus + .checkbox-custom {
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.checkbox-text {
+  user-select: none;
+}
+
+/* ==============================================
+   BADGES
+   ============================================== */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 9999px;
+}
+
+.badge-new {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+}
+
+.badge-coming-soon {
+  background-color: var(--warning-light);
+  color: var(--warning-dark);
+}
+
+/* ==============================================
+   GENERATION OPTIONS
+   ============================================== */
+
+.generation-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.option-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: white;
+}
+
+.option-card:hover {
+  border-color: var(--gray-300);
+  background-color: var(--gray-50);
+}
+
+.option-card.selected {
+  border-color: var(--primary-color);
+  background-color: var(--primary-light);
+}
+
+.option-card.option-featured {
+  border-color: var(--primary-color);
+  border-style: dashed;
+  background: linear-gradient(135deg, rgba(68, 76, 231, 0.02) 0%, rgba(68, 76, 231, 0.06) 100%);
+}
+
+.option-card.option-featured.selected {
+  border-style: solid;
+  background: var(--primary-light);
+}
+
+.option-card.option-skip {
+  background-color: var(--gray-50);
+  border-color: var(--gray-200);
+}
+
+.option-card.option-skip:hover {
+  background-color: var(--gray-100);
+}
+
+/* Radio Button */
+.option-radio {
+  flex-shrink: 0;
+  padding-top: 0.125rem;
+}
+
+.radio-outer {
+  width: 1.125rem;
+  height: 1.125rem;
+  border: 2px solid var(--gray-300);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.radio-outer.checked {
+  border-color: var(--primary-color);
+}
+
+.radio-outer.checked .radio-inner {
+  width: 0.5rem;
+  height: 0.5rem;
+  background-color: var(--primary-color);
+  border-radius: 50%;
+}
+
+/* Option Icon */
+.option-icon {
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gray-100);
+  border-radius: 0.5rem;
+  color: var(--gray-600);
+}
+
+.option-card.selected .option-icon {
+  background: var(--primary-color);
+  color: white;
+}
+
+.option-icon-video {
+  background: var(--primary-light);
+  color: var(--primary-color);
+}
+
+.option-card.selected .option-icon-video {
+  background: var(--primary-color);
+  color: white;
+}
+
+/* Option Content */
+.option-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.option-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.option-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--gray-800);
+}
+
+.option-description {
+  font-size: 0.8125rem;
+  color: var(--gray-500);
+  margin: 0.125rem 0 0 0;
+}
+
+.option-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+}
+
+.option-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  background: white;
+  color: var(--gray-600);
+  border-radius: 0.25rem;
+  border: 1px solid var(--gray-200);
+}
+
+/* ==============================================
+   COMING SOON BANNER
+   ============================================== */
+
+.coming-soon-banner {
+  display: flex;
+  gap: 0.875rem;
+  padding: 1rem;
+  margin-top: 1rem;
+  background: linear-gradient(135deg, var(--warning-light) 0%, #fde68a 100%);
+  border-radius: 0.5rem;
+  border: 1px solid #fcd34d;
+}
+
+.banner-icon {
+  flex-shrink: 0;
+  color: var(--warning-dark);
+}
+
+.banner-content {
+  flex: 1;
+}
+
+.banner-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #92400e;
+  margin: 0 0 0.375rem 0;
+}
+
+.banner-text {
+  font-size: 0.8125rem;
+  color: #78350f;
+  margin: 0;
+}
+
+.banner-features {
+  margin: 0.5rem 0 0.75rem 0;
+  padding-left: 1.25rem;
+  font-size: 0.8125rem;
+  color: #78350f;
+}
+
+.banner-features li {
+  margin-bottom: 0.25rem;
+}
+
+.banner-action {
+  margin-top: 0.75rem;
+}
+
+.btn-notify {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #92400e;
+  background: white;
+  border: 1px solid #d97706;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-notify:hover {
+  background: #fef3c7;
+  border-color: #b45309;
+}
+
+/* ==============================================
+   MODAL FOOTER
+   ============================================== */
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--gray-200);
+  background: var(--gray-50);
+}
+
+/* ==============================================
+   BUTTONS
+   ============================================== */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+}
+
+.btn-secondary {
+  background: white;
+  color: var(--gray-700);
+  border: 1px solid var(--gray-300);
+}
+
+.btn-secondary:hover {
+  background: var(--gray-100);
+  border-color: var(--gray-400);
+}
+
+.btn-primary {
+  background: var(--primary-color);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary-dark);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.spinner {
+  width: 1rem;
+  height: 1rem;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

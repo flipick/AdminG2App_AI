@@ -90,7 +90,7 @@
         </button>
         <button 
           class="btn-primary"
-          (click)="openAddForm()">
+          (click)="openAddToolModal()">
           + Add Tool
         </button>
       </div>
@@ -302,7 +302,7 @@
     </div>
 
     <!-- Empty State for Tools -->
-    <div class="empty-tools" *ngIf="roleTools.length === 0 && !showAddForm && !showAISuggestions">
+    <div class="empty-tools" *ngIf="roleTools.length === 0 && !showAISuggestions">
       <div class="empty-icon">📭</div>
       <h4>No Tools Assigned</h4>
       <p>This role doesn't have any tools assigned yet.</p>
@@ -311,161 +311,22 @@
           <span *ngIf="!isGeneratingAI">🤖 Generate with AI</span>
           <span *ngIf="isGeneratingAI"><span class="spinner"></span> Generating...</span>
         </button>
-        <button class="btn-outline" (click)="openAddForm()">+ Add Manually</button>
+        <button class="btn-outline" (click)="openAddToolModal()">+ Add Manually</button>
       </div>
     </div>
   </div>
 
-  <!-- Add/Edit Tool Form -->
-  <div class="tool-form-overlay" *ngIf="showAddForm">
-    <div class="tool-form-container">
-      <div class="tool-form-header">
-        <h4>{{ editingRoleToolId ? 'Edit Tool' : 'Add Tool' }} for {{ selectedRole }}</h4>
-        <button class="btn-close" (click)="closeAddForm()">×</button>
-      </div>
-      
-      <div class="tool-form-body">
-        <!-- Tool Search/Select -->
-        <div class="form-group" *ngIf="!editingRoleToolId">
-          <label class="form-label">Search Tool *</label>
-          <input 
-            type="text" 
-            class="form-input"
-            [(ngModel)]="searchTerm"
-            (input)="searchTools()"
-            placeholder="Type to search tools (e.g., Java, Angular, AWS)..."
-          />
-          
-          <!-- Search Results -->
-          <div class="search-results" *ngIf="filteredMasterTools.length > 0">
-            <div 
-              class="search-result-item"
-              *ngFor="let tool of filteredMasterTools"
-              (click)="selectTool(tool)">
-              <span class="result-icon">{{ getCategoryIcon(tool.category) }}</span>
-              <div class="result-info">
-                <span class="result-name">{{ tool.toolName }}</span>
-                <span class="result-category">{{ tool.category }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
+  <!-- NEW: Add Tool Modal Component -->
+  <app-add-tool-modal
+    #addToolModal
+    [jobRoleId]="selectedRoleId"
+    [jobRoleName]="selectedRole"
+    [tenantId]="selectedTenantId ? +selectedTenantId : 0"
+    (toolSaved)="onToolSaved($event)"
+    (modalClosed)="onToolModalClosed()"
+  ></app-add-tool-modal>
 
-        <!-- Selected Tool Display -->
-        <div class="selected-tool-display" *ngIf="newTool.toolName">
-          <div class="selected-tool-info">
-            <span class="selected-icon">{{ getCategoryIcon(newTool.category || '') }}</span>
-            <div>
-              <strong>{{ newTool.toolName }}</strong>
-              <span class="selected-category">{{ newTool.category }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Or Create New Tool -->
-        <div class="divider" *ngIf="!editingRoleToolId && !selectedToolId">
-          <span>or create a new tool</span>
-        </div>
-
-        <!-- New Tool Fields -->
-        <div *ngIf="!selectedToolId && !editingRoleToolId">
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Tool Name *</label>
-              <input 
-                type="text" 
-                class="form-input"
-                [(ngModel)]="newTool.toolName"
-                placeholder="e.g., Angular, Python, AWS"
-              />
-            </div>
-            
-            <div class="form-group">
-              <label class="form-label">Category *</label>
-              <select class="form-select" [(ngModel)]="newTool.category">
-                <option value="">Select Category</option>
-                <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
-              </select>
-            </div>
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label">Description</label>
-            <textarea 
-              class="form-textarea"
-              [(ngModel)]="newTool.description"
-              placeholder="Brief description of this tool..."
-              rows="3"
-            ></textarea>
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label">Keywords</label>
-            <div class="keywords-input">
-              <div class="keyword-tags">
-                <span class="keyword-chip" *ngFor="let kw of newTool.keywords; let i = index">
-                  {{ kw }}
-                  <button class="keyword-remove" (click)="removeKeyword(i)">×</button>
-                </span>
-              </div>
-              <div class="keyword-add">
-                <input 
-                  type="text" 
-                  class="form-input-sm"
-                  [(ngModel)]="newKeyword"
-                  placeholder="Add keyword..."
-                  (keyup.enter)="addKeyword()"
-                />
-                <button class="btn-add-keyword" (click)="addKeyword()">Add</button>
-              </div>
-            </div>
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label">Estimated Learning Hours</label>
-            <input 
-              type="number" 
-              class="form-input-sm"
-              [(ngModel)]="newTool.estimatedHours"
-              placeholder="e.g., 40"
-              min="1"
-            />
-          </div>
-        </div>
-
-        <!-- Required Level -->
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Required Level *</label>
-            <select class="form-select" [(ngModel)]="selectedLevel">
-              <option *ngFor="let level of levels" [value]="level.value">
-                {{ level.label }}
-              </option>
-            </select>
-          </div>
-          
-          <div class="form-group checkbox-group">
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="isRequired" />
-              <span>Required for this role</span>
-            </label>
-          </div>
-        </div>
-      </div>
-      
-      <div class="tool-form-footer">
-        <button class="btn-cancel" (click)="closeAddForm()">Cancel</button>
-        <button 
-          class="btn-save"
-          (click)="saveTool()"
-          [disabled]="isLoading || (!selectedToolId && !newTool.toolName)">
-          {{ isLoading ? 'Saving...' : (editingRoleToolId ? 'Update' : 'Add Tool') }}
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Link Course Modal -->
+  <!-- Link Course Modal (Keep existing) -->
   <div class="link-course-overlay" *ngIf="showLinkCourseModal">
     <div class="link-course-modal">
       <div class="link-course-header">
