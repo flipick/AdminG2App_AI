@@ -1,0 +1,677 @@
+<!-- ============================================
+     SKILLS FRAMEWORK - 4-TAB INTERFACE
+     Tabs: SSF Browser | Tenant Roles | Custom Roles | Tools
+     ============================================ -->
+<div class="page-container">
+  
+  <!-- ========== HEADER ========== -->
+  <header class="page-header">
+    <div>
+      <h1 class="heading-txt">Skills</h1>
+      <p class="content-text">Define and manage organizational skills and competencies</p>
+    </div>
+    
+    <!-- Reset Button -->
+    <div class="header-controls">
+      <button type="button" (click)="onResetAll()" class="btn btn-outline">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        Reset
+      </button>
+    </div>
+  </header>
+
+  <!-- ========== TAB NAVIGATION ========== -->
+  @if(permissions.showSkillSettings) {
+    <nav class="tab-navigation">
+      <button 
+        type="button"
+        class="tab-btn"
+        [class.active]="activeTab === 'ssf-browser'"
+        (click)="setActiveTab('ssf-browser')">
+        <svg class="tab-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        SSF Browser
+      </button>
+      
+      <button 
+        type="button"
+        class="tab-btn"
+        [class.active]="activeTab === 'tenant-roles'"
+        (click)="setActiveTab('tenant-roles')">
+        <svg class="tab-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        Tenant Roles
+      </button>
+      
+      <button 
+        type="button"
+        class="tab-btn"
+        [class.active]="activeTab === 'custom-roles'"
+        (click)="setActiveTab('custom-roles')">
+        <svg class="tab-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        </svg>
+        Custom Roles
+      </button>
+      
+      <button 
+        type="button"
+        class="tab-btn"
+        [class.active]="activeTab === 'tools'"
+        (click)="setActiveTab('tools')">
+        <svg class="tab-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        Tools
+      </button>
+    </nav>
+  }
+
+  <!-- ========== FEEDBACK MESSAGES ========== -->
+  @if(successMessage) {
+    <div class="message message-success fade-in">
+      <svg class="message-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <span>{{ successMessage }}</span>
+      <button type="button" (click)="successMessage = ''" class="message-close">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  }
+
+  @if(errorMessage) {
+    <div class="message message-error fade-in">
+      <svg class="message-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <span>{{ errorMessage }}</span>
+      <button type="button" (click)="errorMessage = ''" class="message-close">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  }
+
+  <!-- ========================================
+       TAB 1: SSF BROWSER
+       Browse SSF catalog, select roles for tenant
+       ======================================== -->
+  @if(activeTab === 'ssf-browser') {
+    <section class="page-content fade-in">
+      
+      <!-- Filter Bar -->
+      <div class="filter-bar">
+        <!-- Tenant Filter -->
+        <div class="filter-group">
+          <label for="tenant" class="form-label">Tenant</label>
+          <select 
+            id="tenant" 
+            (change)="onTenantChange($event)" 
+            class="form-select"
+            [disabled]="!permissions.showTenantDropdown">
+            <option value="">All Tenants</option>
+            @for(tenant of tenantlist; track tenant.tenantId) {
+              <option 
+                [value]="tenant.tenantId"
+                [selected]="tenant.tenantId.toString() === selectedTenantId">
+                {{ tenant.tenantName }}
+              </option>
+            }
+          </select>
+        </div>
+
+        <!-- Sector Filter -->
+        <div class="filter-group">
+          <label for="sector" class="form-label">Sector</label>
+          <select id="sector" (change)="onSectorChange($event)" class="form-select" #sectorSelect>
+            <option value="">All Sectors</option>
+            @for(sector of sectorData; track sector.sectorId) {
+              <option [value]="sector.sectorId">{{ sector.sectorName }}</option>
+            }
+          </select>
+        </div>
+
+        <!-- Track Filter -->
+        <div class="filter-group">
+          <label for="track" class="form-label">Track</label>
+          <select id="track" (change)="onTrackChange($event)" class="form-select" #trackSelect>
+            <option value="">All Tracks</option>
+            @for(track of trackData; track track.trackId) {
+              <option [value]="track.trackId">{{ track.trackName }}</option>
+            }
+          </select>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="filter-actions">
+          <button type="button" (click)="onApplyFilter()" class="btn btn-outline" [disabled]="isLoading">
+            @if(isLoading) {
+              <span class="spinner-sm"></span>
+            }
+            Apply
+          </button>
+          
+          @if(hasSelection && selectedTenantId) {
+            <button type="button" (click)="onAssignToTenant()" class="btn btn-primary" [disabled]="isAssigning">
+              @if(isAssigning) {
+                <span class="spinner-sm"></span>
+              }
+              Select for Tenant
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      @if(isLoading) {
+        <div class="loading-overlay">
+          <div class="loading-spinner"></div>
+          <p class="loading-text">Loading SSF data...</p>
+        </div>
+      }
+
+      <!-- Role Cards Grid -->
+      @if(!isLoading && roleData.length > 0) {
+        <section class="fade-in">
+          <div class="section-header">
+            <h2 class="section-title">Available Roles</h2>
+            <span class="badge badge-primary">{{ roleData.length }} roles found</span>
+          </div>
+          
+          <div class="role-cards-grid">
+            @for(role of roleData; track role.jobRoleId) {
+              <div 
+                class="role-card"
+                [class.selected]="role.isChecked">
+                <h3 class="role-card-title">{{ role.jobRoleName }}</h3>
+                <p class="role-card-description" [title]="role.jobRoleDescription || ''">
+                  {{ role.jobRoleDescription || 'No description available' }}
+                </p>
+                
+                @if(selectedTenantId) {
+                  <div class="role-card-actions">
+                    <!-- Select Checkbox -->
+                    <button 
+                      type="button"
+                      class="checkbox-btn"
+                      [class.checked]="role.isChecked"
+                      (click)="onCheckboxChange($event, role)"
+                      [attr.aria-label]="role.isChecked ? 'Deselect ' + role.jobRoleName : 'Select ' + role.jobRoleName">
+                      @if(role.isChecked) {
+                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                      } @else {
+                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                      }
+                    </button>
+                    
+                    <!-- Status Badge -->
+                    @if(role.isCheckedAsignToTenant) {
+                      <span class="badge badge-success">Assigned</span>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </section>
+      }
+
+      <!-- Empty State -->
+      @if(!isLoading && roleData.length === 0) {
+        <div class="empty-state">
+          <svg class="empty-state-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <h3 class="empty-state-title">No Roles Found</h3>
+          <p class="empty-state-description">Select a Sector and Track, then click "Apply" to browse available roles.</p>
+        </div>
+      }
+    </section>
+  }
+
+  <!-- ========================================
+       TAB 2: TENANT ROLES
+       View and manage skills for assigned roles
+       ======================================== -->
+  @if(activeTab === 'tenant-roles') {
+    <section class="page-content fade-in">
+      
+      <!-- Filter Bar for Tenant Roles -->
+      <div class="filter-bar">
+        <div class="filter-group">
+          <label for="tenant-roles-tenant" class="form-label">Tenant</label>
+          <select 
+            id="tenant-roles-tenant" 
+            (change)="onTenantChange($event)" 
+            class="form-select"
+            [disabled]="!permissions.showTenantDropdown || isEditingSkills">
+            <option value="">Select Tenant</option>
+            @for(tenant of tenantlist; track tenant.tenantId) {
+              <option 
+                [value]="tenant.tenantId"
+                [selected]="tenant.tenantId.toString() === selectedTenantId">
+                {{ tenant.tenantName }}
+              </option>
+            }
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="tenant-roles-sector" class="form-label">Sector</label>
+          <select 
+            id="tenant-roles-sector" 
+            (change)="onSectorChange($event)" 
+            class="form-select"
+            [disabled]="isEditingSkills"
+            #sectorSelectTenant>
+            <option value="">All Sectors</option>
+            @for(sector of sectorData; track sector.sectorId) {
+              <option [value]="sector.sectorId">{{ sector.sectorName }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="tenant-roles-track" class="form-label">Track</label>
+          <select 
+            id="tenant-roles-track" 
+            (change)="onTrackChange($event)" 
+            class="form-select"
+            [disabled]="isEditingSkills"
+            #trackSelectTenant>
+            <option value="">All Tracks</option>
+            @for(track of trackData; track track.trackId) {
+              <option [value]="track.trackId">{{ track.trackName }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="filter-actions">
+          <button 
+            type="button" 
+            (click)="loadTenantRoles()" 
+            class="btn btn-outline"
+            [disabled]="isLoading || !selectedTenantId || isEditingSkills">
+            @if(isLoading) {
+              <span class="spinner-sm"></span>
+            }
+            Load Roles
+          </button>
+        </div>
+      </div>
+
+      <!-- Not Editing: Show Assigned Roles Grid -->
+      @if(!isEditingSkills) {
+        @if(isLoading) {
+          <div class="loading-overlay">
+            <div class="loading-spinner"></div>
+            <p class="loading-text">Loading tenant roles...</p>
+          </div>
+        }
+
+        @if(!isLoading && tenantAssignedRoles.length > 0) {
+          <section class="fade-in">
+            <div class="section-header">
+              <h2 class="section-title">Assigned Roles</h2>
+              <span class="badge badge-primary">{{ tenantAssignedRoles.length }} roles</span>
+            </div>
+            
+            <div class="role-cards-grid">
+              @for(role of tenantAssignedRoles; track role.jobRoleId) {
+                <div class="role-card">
+                  <h3 class="role-card-title">{{ role.jobRoleName }}</h3>
+                  <p class="role-card-description">{{ role.jobRoleDescription || 'No description' }}</p>
+                  <div class="role-card-actions">
+                    <span class="badge badge-success">Assigned</span>
+                    <button 
+                      type="button"
+                      class="btn btn-outline btn-sm ml-auto"
+                      (click)="editSkills(role)">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      Manage Skills
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          </section>
+        }
+
+        @if(!isLoading && tenantAssignedRoles.length === 0 && selectedTenantId) {
+          <div class="empty-state">
+            <svg class="empty-state-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <h3 class="empty-state-title">No Roles Assigned</h3>
+            <p class="empty-state-description">Go to "SSF Browser" to select roles for this tenant.</p>
+          </div>
+        }
+
+        @if(!selectedTenantId) {
+          <div class="empty-state">
+            <svg class="empty-state-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
+            </svg>
+            <h3 class="empty-state-title">Select a Tenant</h3>
+            <p class="empty-state-description">Choose a tenant to view their assigned roles.</p>
+          </div>
+        }
+      }
+
+      <!-- Editing Skills Mode -->
+      @if(isEditingSkills && groupedKeyData.length > 0) {
+        <section class="fade-in">
+          
+          <!-- Context Bar -->
+          <div class="context-bar">
+            <div class="context-item">
+              <span class="context-label">Role:</span>
+              <span class="context-value">{{ selectedRole }}</span>
+            </div>
+            <div class="context-item">
+              <span class="context-label">Sector:</span>
+              <span class="context-value">{{ selectedSector }}</span>
+            </div>
+            <div class="context-item">
+              <span class="context-label">Track:</span>
+              <span class="context-value">{{ selectedTrack }}</span>
+            </div>
+            <button type="button" (click)="exitEditMode()" class="btn btn-outline btn-sm ml-auto">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Back to Roles
+            </button>
+          </div>
+
+          <!-- Critical Work Functions & Key Tasks -->
+          @for(taskGroup of groupedKeyData; track taskGroup.criticalWorkFunction; let i = $index) {
+            <div class="skill-section" [class.editing-mode]="taskGroup.isEditing">
+              <div class="skill-section-header">
+                <div class="flex items-center gap-2">
+                  <h3 class="skill-section-title">
+                    @if(taskGroup.isEditing) {
+                      <span 
+                        contenteditable="true"
+                        class="editable-text"
+                        [attr.data-old-value]="taskGroup.criticalWorkFunction"
+                        (blur)="onCwfChange(taskGroup, $event)">{{ taskGroup.criticalWorkFunction }}</span>
+                    } @else {
+                      {{ taskGroup.criticalWorkFunction }}
+                    }
+                  </h3>
+                  @if(taskGroup.isEdited) {
+                    <span class="badge badge-warning">Modified</span>
+                  }
+                </div>
+                <button 
+                  type="button"
+                  class="btn btn-sm"
+                  [class.btn-primary]="taskGroup.isEditing"
+                  [class.btn-outline]="!taskGroup.isEditing"
+                  (click)="toggleEdit(taskGroup)"
+                  #editBtn>
+                  {{ taskGroup.isEditing ? 'Done' : 'Edit' }}
+                </button>
+              </div>
+              
+              <div class="skill-section-body">
+                @for(task of taskGroup.tasks; track task.keyTaskSkill; let j = $index) {
+                  <div class="editable-item">
+                    @if(taskGroup.isEditing) {
+                      <span 
+                        contenteditable="true"
+                        class="editable-text"
+                        [attr.data-old-value]="task.keyTaskSkill"
+                        (blur)="onKeyTaskEdit(task, $event)">{{ task.keyTaskSkill }}</span>
+                    } @else {
+                      <span class="editable-text">{{ task.keyTaskSkill }}</span>
+                    }
+                    
+                    <div class="flex gap-1">
+                      @if(task.isNew) {
+                        <span class="badge badge-success">New</span>
+                      }
+                      @if(task.isEdited && !task.isNew) {
+                        <span class="badge badge-warning">Modified</span>
+                      }
+                    </div>
+                    
+                    @if(taskGroup.isEditing && task.isNew) {
+                      <button type="button" class="btn btn-danger btn-sm" (click)="removeTask(taskGroup, j)">
+                        Remove
+                      </button>
+                    } @else {
+                      <div></div>
+                    }
+                  </div>
+                }
+                
+                @if(taskGroup.isEditing) {
+                  <button type="button" class="btn btn-outline btn-sm mt-3" (click)="addTask(taskGroup)">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Add Key Task
+                  </button>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Add New CWF -->
+          <button type="button" class="btn btn-outline" (click)="addCWFKeyTask()">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Add Critical Work Function
+          </button>
+
+          <!-- Core Skills -->
+          @if(coreSkills.length > 0) {
+            <div class="skill-section" [class.editing-mode]="isCoreEditing">
+              <div class="skill-section-header">
+                <h3 class="skill-section-title">Core Skills</h3>
+                <button 
+                  type="button"
+                  class="btn btn-sm"
+                  [class.btn-primary]="isCoreEditing"
+                  [class.btn-outline]="!isCoreEditing"
+                  (click)="toggleCoreEdit()">
+                  {{ isCoreEditing ? 'Done' : 'Edit' }}
+                </button>
+              </div>
+              
+              <div class="skill-section-body">
+                @for(skill of coreSkills; track skill.coreSkill; let k = $index) {
+                  <div class="editable-item">
+                    @if(isCoreEditing) {
+                      <span 
+                        contenteditable="true"
+                        class="editable-text"
+                        (blur)="onCoreSkillChange(skill, $event)">{{ skill.coreSkill }}</span>
+                      
+                      <select 
+                        [(ngModel)]="skill.proficiencyLevel" 
+                        class="form-select form-select-sm"
+                        (change)="onCoreProficiencyChange(skill)">
+                        @for(level of [1,2,3,4,5]; track level) {
+                          <option [value]="level">Level {{ level }}</option>
+                        }
+                      </select>
+                    } @else {
+                      <span class="editable-text">{{ skill.coreSkill }}</span>
+                      <span class="badge badge-primary">Level {{ skill.proficiencyLevel }}</span>
+                    }
+                    
+                    <div class="flex items-center gap-2">
+                      @if(skill.isNew) {
+                        <span class="badge badge-success">New</span>
+                      }
+                      @if(skill.isEdited && !skill.isNew) {
+                        <span class="badge badge-warning">Modified</span>
+                      }
+                      @if(isCoreEditing && skill.isNew) {
+                        <button type="button" class="btn btn-danger btn-sm" (click)="removeCoreSkill(skill)">
+                          Remove
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
+                
+                @if(isCoreEditing) {
+                  <button type="button" class="btn btn-outline btn-sm mt-3" (click)="addCoreSkill()">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Add Core Skill
+                  </button>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- TDC Skills -->
+          @if(tdcSkills.length > 0) {
+            <div class="skill-section" [class.editing-mode]="isTdcEditing">
+              <div class="skill-section-header">
+                <h3 class="skill-section-title">Technical & Domain Competency (TDC) Skills</h3>
+                <button 
+                  type="button"
+                  class="btn btn-sm"
+                  [class.btn-primary]="isTdcEditing"
+                  [class.btn-outline]="!isTdcEditing"
+                  (click)="toggleTdcEdit()">
+                  {{ isTdcEditing ? 'Done' : 'Edit' }}
+                </button>
+              </div>
+              
+              <div class="skill-section-body">
+                @for(skill of tdcSkills; track skill.tdcSkill; let l = $index) {
+                  <div class="editable-item">
+                    @if(isTdcEditing) {
+                      <span 
+                        contenteditable="true"
+                        class="editable-text"
+                        (blur)="onTdcSkillChange(skill, $event)">{{ skill.tdcSkill }}</span>
+                      
+                      <select 
+                        [(ngModel)]="skill.tdcProficiencyLevel" 
+                        class="form-select form-select-sm"
+                        (change)="onTdcProficiencyChange(skill)">
+                        @for(level of ['Basic', 'Intermediate', 'Advanced']; track level) {
+                          <option [value]="level">{{ level }}</option>
+                        }
+                      </select>
+                    } @else {
+                      <span class="editable-text">{{ skill.tdcSkill }}</span>
+                      <span class="badge badge-primary">{{ skill.tdcProficiencyLevel }}</span>
+                    }
+                    
+                    <div class="flex items-center gap-2">
+                      @if(skill.isNew) {
+                        <span class="badge badge-success">New</span>
+                      }
+                      @if(skill.isEdited && !skill.isNew) {
+                        <span class="badge badge-warning">Modified</span>
+                      }
+                      @if(isTdcEditing && skill.isNew) {
+                        <button type="button" class="btn btn-danger btn-sm" (click)="removeTdcSkill(skill)">
+                          Remove
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
+                
+                @if(isTdcEditing) {
+                  <button type="button" class="btn btn-outline btn-sm mt-3" (click)="addTdcSkill()">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Add TDC Skill
+                  </button>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Save Footer -->
+          <div class="save-footer">
+            <button type="button" (click)="exitEditMode()" class="btn btn-outline">
+              Cancel
+            </button>
+            <button 
+              type="button" 
+              (click)="onSubmitKeyTaskChanges()" 
+              class="btn btn-success"
+              [disabled]="isSaving">
+              @if(isSaving) {
+                <span class="spinner-sm"></span>
+              }
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              Save Changes
+            </button>
+          </div>
+        </section>
+      }
+    </section>
+  }
+
+  <!-- ========================================
+       TAB 3: CUSTOM ROLES
+       Add custom Sector/Track/Role not in SSF
+       ======================================== -->
+  @if(activeTab === 'custom-roles') {
+    <section class="page-content fade-in">
+      <app-add-sector-track-role 
+        [tenantlist]="tenantlist" 
+        [selectedTenantId]="selectedTenantId"
+        (added)="onRoleAdded($event)"
+        (cancelled)="onChildCancelled()">
+      </app-add-sector-track-role>
+    </section>
+  }
+
+  <!-- ========================================
+       TAB 4: TOOLS
+       Manage tools/technologies (Future Feature)
+       ======================================== -->
+  @if(activeTab === 'tools') {
+    <section class="page-content fade-in">
+      <div class="coming-soon">
+        <div class="coming-soon-icon">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </div>
+        <h2 class="coming-soon-title">Tools Management</h2>
+        <p class="coming-soon-description">
+          Manage tools and technologies like Java, Photoshop, AWS, etc.
+          Map them to courses and skills for better recommendations.
+        </p>
+        <span class="badge badge-warning">Coming Soon</span>
+      </div>
+    </section>
+  }
+</div>
