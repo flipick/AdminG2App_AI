@@ -140,7 +140,7 @@
             class="form-select"
             #sectorSelect>
             <option value="">All Sectors</option>
-            @for(sector of sectorData; track sector.sectorId) {
+            @for(sector of sectorData; track $index) {
               <option 
                 [value]="sector.sectorName"
                 [selected]="sector.sectorName === selectedSector">
@@ -159,11 +159,11 @@
             class="form-select"
             #trackSelect>
             <option value="">All Tracks</option>
-            @for(track of trackData; track track.trackId) {
+            @for(trk of trackData; track $index) {
               <option 
-                [value]="track.trackName"
-                [selected]="track.trackName === selectedTrack">
-                {{ track.trackName }}
+                [value]="trk.trackName"
+                [selected]="trk.trackName === selectedTrack">
+                {{ trk.trackName }}
               </option>
             }
           </select>
@@ -210,7 +210,7 @@
           </div>
           
           <div class="role-cards-grid">
-            @for(role of roleData; track role.jobRoleId) {
+            @for(role of roleData; track $index) {
               <div 
                 class="role-card"
                 [class.selected]="role.isChecked">
@@ -338,7 +338,7 @@
             </div>
             
             <div class="role-cards-grid">
-              @for(role of filteredTenantRoles; track role.jobRoleId) {
+              @for(role of filteredTenantRoles; track $index) {
                 <div class="role-card">
                   <!-- Custom Badge -->
                   @if(role.addedByUser === 1) {
@@ -440,7 +440,7 @@
           </div>
 
           <!-- Critical Work Functions & Key Tasks -->
-          @for(taskGroup of groupedKeyData; track taskGroup.criticalWorkFunction; let i = $index) {
+          @for(taskGroup of groupedKeyData; track $index; let i = $index) {
             <div class="skill-section" [class.editing-mode]="taskGroup.isEditing">
               <div class="skill-section-header">
                 <div class="flex items-center gap-2">
@@ -471,7 +471,7 @@
               </div>
               
               <div class="skill-section-body">
-                @for(task of taskGroup.tasks; track task.keyTaskSkill; let j = $index) {
+                @for(task of taskGroup.tasks; track $index; let j = $index) {
                   <div class="editable-item">
                     @if(taskGroup.isEditing) {
                       <span 
@@ -538,7 +538,7 @@
               </div>
               
               <div class="skill-section-body">
-                @for(skill of coreSkills; track skill.coreSkill; let k = $index) {
+                @for(skill of coreSkills; track $index; let k = $index) {
                   <div class="editable-item">
                     @if(isCoreEditing) {
                       <span 
@@ -603,7 +603,7 @@
               </div>
               
               <div class="skill-section-body">
-                @for(skill of tdcSkills; track skill.tdcSkill; let l = $index) {
+                @for(skill of tdcSkills; track $index; let l = $index) {
                   <div class="editable-item">
                     @if(isTdcEditing) {
                       <span 

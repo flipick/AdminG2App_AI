@@ -1,14 +1,31 @@
-<div class="tools-container">
-  
+<div class="tools-tab-container">
+  <!-- Header -->
+  <div class="tools-header">
+    <div class="tools-title">
+      <h3>🛠️ Tools & Technologies</h3>
+      <p class="tools-subtitle">Manage tools with Primers (quick intros) and Mastery Tracks (deep learning)</p>
+    </div>
+  </div>
+
   <!-- Filters -->
   <div class="tools-filters">
+    <div class="filter-group">
+      <label class="filter-label">Tenant</label>
+      <select class="filter-select" [(ngModel)]="selectedTenantId">
+        <option value="">Select Tenant</option>
+        @for(tenant of tenants; track $index) {
+          <option [value]="tenant.tenantId">{{ tenant.tenantName }}</option>
+        }
+      </select>
+    </div>
+    
     <div class="filter-group">
       <label class="filter-label">Sector</label>
       <select class="filter-select" [(ngModel)]="selectedSector" (change)="onSectorChange()">
         <option value="">Select Sector</option>
-        <option *ngFor="let sector of sectorData" [value]="sector.sectorName">
-          {{ sector.sectorName }}
-        </option>
+        @for(sector of sectorData; track $index) {
+          <option [value]="sector.sectorName">{{ sector.sectorName }}</option>
+        }
       </select>
     </div>
     
@@ -16,373 +33,698 @@
       <label class="filter-label">Track</label>
       <select class="filter-select" [(ngModel)]="selectedTrack" (change)="onTrackChange()" [disabled]="!selectedSector">
         <option value="">Select Track</option>
-        <option *ngFor="let track of trackData" [value]="track.trackName">
-          {{ track.trackName }}
-        </option>
+        @for(trk of trackData; track $index) {
+          <option [value]="trk.trackName">{{ trk.trackName }}</option>
+        }
       </select>
     </div>
     
-    <div class="filter-group filter-selected" *ngIf="selectedRole">
-      <label class="filter-label">Selected Role</label>
-      <div class="selected-role-display">
-        <span class="selected-role-name">{{ selectedRole }}</span>
-        <button class="btn-clear-role" (click)="clearSelectedRole()" title="Clear selection">✕</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- STEP 1: Role Selection (when no role selected) -->
-  <div class="role-selection-section" *ngIf="!selectedRole && selectedTrack">
-    <div class="section-header">
-      <h3 class="section-title">Select a Role</h3>
-      <span class="role-count-badge">{{ filteredRoleData.length }} roles found</span>
-    </div>
-    
-    <div class="role-cards-grid">
-      <div 
-        class="role-card"
-        *ngFor="let role of filteredRoleData"
-        (click)="selectRole(role)">
-        <h4 class="role-card-title">{{ role.jobRoleName }}</h4>
-        <p class="role-card-description">{{ role.jobRoleDescription?.slice(0, 100) }}{{ role.jobRoleDescription?.length > 100 ? '...' : '' }}</p>
-        <div class="role-card-footer">
-          <span class="click-hint">Click to select</span>
+    @if(selectedRole) {
+      <div class="filter-group selected-role-display">
+        <label class="filter-label">Role</label>
+        <div class="selected-role-badge">
+          <span>{{ selectedRole }}</span>
+          <button class="btn-clear-role" (click)="clearSelectedRole()" title="Clear selection">✕</button>
         </div>
       </div>
-    </div>
+    }
   </div>
 
-  <!-- Empty State: No track selected -->
-  <div class="empty-state" *ngIf="!selectedTrack">
-    <div class="empty-icon">🛠️</div>
-    <h4>Select Sector & Track</h4>
-    <p>Use the filters above to browse available roles, then select one to manage its tools.</p>
-  </div>
-
-  <!-- Empty State: No roles in track -->
-  <div class="empty-state" *ngIf="selectedTrack && filteredRoleData.length === 0 && !selectedRole">
-    <div class="empty-icon">📭</div>
-    <h4>No Roles Found</h4>
-    <p>No roles available in this track. Try selecting a different track.</p>
-  </div>
-
-  <!-- STEP 2: Tools Management (when role is selected) -->
-  <div class="tools-management-section" *ngIf="selectedRole">
-    
-    <!-- Header -->
-    <div class="tools-header">
-      <div>
-        <h3 class="tools-title">Tools & Technologies</h3>
-        <p class="tools-subtitle">
-          Define required tools for <strong>{{ selectedRole }}</strong>
-        </p>
+  <!-- Role Selection Grid -->
+  @if(!selectedRole && selectedTrack && filteredRoleData.length > 0) {
+    <div class="role-selection-section">
+      <h4 class="section-title">Select a Role</h4>
+      <div class="role-cards-grid">
+        @for(role of filteredRoleData; track $index) {
+          <div class="role-card" [class.has-tools]="hasToolsForRole(role)">
+            <div class="role-card-header">
+              <h4 class="role-card-title">{{ role.jobRoleName || role.jobRole }}</h4>
+              <div class="role-card-badges">
+                @if(role.addedByUser > 0) {
+                  <span class="role-card-badge custom">Custom</span>
+                }
+                @if(hasToolsForRole(role)) {
+                  <span class="role-card-badge tools">{{ getToolCountForRole(role) }} tools</span>
+                }
+              </div>
+            </div>
+            <p class="role-card-description">{{ role.jobRoleDescription || 'No description available' }}</p>
+            
+            <!-- Contextual Action Button -->
+            <div class="role-card-actions">
+              @if(hasToolsForRole(role)) {
+                <button class="btn-view-tools" (click)="selectRole(role)">
+                  <span class="btn-icon">🛠️</span> View Tools
+                </button>
+              } @else {
+                <button class="btn-create-tools" (click)="selectRole(role)">
+                  <span class="btn-icon">✨</span> Create Tools
+                </button>
+              }
+            </div>
+          </div>
+        }
       </div>
+    </div>
+  }
+
+  <!-- Tools Management Section -->
+  @if(selectedRole) {
+    <div class="tools-management-section">
       
+      <!-- Tools Summary - Enhanced -->
+      <div class="tools-summary-enhanced">
+        <div class="summary-card">
+          <div class="summary-icon">🛠️</div>
+          <div class="summary-content">
+            <span class="summary-value">{{ roleTools.length }}</span>
+            <span class="summary-label">Total Tools</span>
+          </div>
+        </div>
+        <div class="summary-card required">
+          <div class="summary-icon">⭐</div>
+          <div class="summary-content">
+            <span class="summary-value">{{ getRequiredCount() }}</span>
+            <span class="summary-label">Required</span>
+          </div>
+        </div>
+        <div class="summary-card primers">
+          <div class="summary-icon">🎬</div>
+          <div class="summary-content">
+            <span class="summary-value">{{ getTotalPrimers() }}</span>
+            <span class="summary-label">Primers Ready</span>
+          </div>
+        </div>
+        <div class="summary-card mastery">
+          <div class="summary-icon">📚</div>
+          <div class="summary-content">
+            <span class="summary-value">{{ getTotalHours() }}h</span>
+            <span class="summary-label">Mastery Content</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
       <div class="tools-actions">
-        <button 
-          class="btn-ai-generate"
-          (click)="generateToolsWithAI()"
-          [disabled]="isGeneratingAI">
-          <span *ngIf="!isGeneratingAI">🤖 Generate with AI</span>
-          <span *ngIf="isGeneratingAI">
-            <span class="spinner"></span> Generating...
-          </span>
+        <button class="btn-ai-generate" (click)="generateToolsWithAI()" [disabled]="isGeneratingAI">
+          @if(!isGeneratingAI) {
+            <span>🤖 Generate Tools with AI</span>
+          } @else {
+            <span class="loading-spinner"></span>
+            <span>Generating...</span>
+          }
         </button>
-        <button 
-          class="btn-primary"
-          (click)="openAddToolModal()">
-          + Add Tool
+        <button class="btn-add-tool" (click)="openAddForm()">
+          + Add Tool Manually
         </button>
       </div>
-    </div>
 
-    <!-- Success Message -->
-    <div class="alert-success" *ngIf="saveMessage">
+      <!-- AI Error -->
+      @if(aiError) {
+        <div class="ai-error">
+          <span>⚠️ {{ aiError }}</span>
+        </div>
+      }
+
+      <!-- AI Suggestions Panel - Enhanced Cards -->
+      @if(showAISuggestions && aiSuggestions.length > 0) {
+        <div class="ai-suggestions-panel">
+          <div class="ai-panel-header">
+            <div class="ai-panel-title">
+              <h4>🤖 AI Suggested Tools for {{ selectedRole }}</h4>
+              <p class="ai-panel-subtitle">{{ aiSuggestions.length }} tools recommended with learning resources</p>
+            </div>
+            <div class="ai-panel-actions">
+              <button class="btn-add-all" (click)="addAllSuggestions()">
+                <span>✓</span> Add All Tools
+              </button>
+              <button class="btn-dismiss" (click)="dismissAISuggestions()">✕</button>
+            </div>
+          </div>
+          
+          <div class="ai-suggestions-grid">
+            @for(suggestion of aiSuggestions; track $index) {
+              <div class="suggestion-card" [attr.data-category]="suggestion.category">
+                <!-- Category Color Bar -->
+                <div class="suggestion-category-bar" [ngClass]="'category-' + getCategorySlug(suggestion.category)"></div>
+                
+                <div class="suggestion-card-body">
+                  <!-- Header -->
+                  <div class="suggestion-header">
+                    <div class="suggestion-icon">{{ getCategoryIcon(suggestion.category) }}</div>
+                    <div class="suggestion-title-area">
+                      <h5 class="suggestion-name">{{ suggestion.toolName }}</h5>
+                      <span class="suggestion-category-tag">{{ suggestion.category }}</span>
+                    </div>
+                    <span class="suggestion-level" [ngClass]="getLevelClass(suggestion.requiredLevelNumber)">
+                      {{ suggestion.requiredLevel }}
+                    </span>
+                  </div>
+                  
+                  <p class="suggestion-description">{{ suggestion.description }}</p>
+                  
+                  <!-- Meta Info -->
+                  <div class="suggestion-meta-row">
+                    <span class="meta-item">
+                      <span class="meta-icon">⏱️</span>
+                      {{ suggestion.estimatedHours }}h mastery
+                    </span>
+                    @if(suggestion.isRequired) {
+                      <span class="meta-item required-tag">
+                        <span class="meta-icon">⭐</span>
+                        Required
+                      </span>
+                    }
+                  </div>
+                  
+                  <!-- Learning Resources Preview -->
+                  <div class="learning-preview">
+                    @if(suggestion.primerTopics && suggestion.primerTopics.length > 0) {
+                      <div class="preview-section primer-preview">
+                        <div class="preview-header">
+                          <span class="preview-badge primer">🎬 Primer</span>
+                          <span class="preview-type">{{ getPrimerTypeLabel(suggestion.recommendedPrimerType) }}</span>
+                        </div>
+                        <ul class="preview-list">
+                          @for(topic of suggestion.primerTopics.slice(0, 3); track $index) {
+                            <li>{{ topic }}</li>
+                          }
+                        </ul>
+                      </div>
+                    }
+                    
+                    @if(suggestion.masteryRecommendations && suggestion.masteryRecommendations.length > 0) {
+                      <div class="preview-section mastery-preview">
+                        <span class="preview-badge mastery">📚 Mastery</span>
+                        <div class="mastery-sources">
+                          @for(rec of suggestion.masteryRecommendations.slice(0, 2); track $index) {
+                            <span class="mastery-source">{{ rec.provider }} • {{ rec.duration }}</span>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+                
+                <!-- Action Button -->
+                <div class="suggestion-action">
+                  <button class="btn-add-suggestion" (click)="addSuggestedTool(suggestion)">
+                    <span class="btn-icon">✓</span> Add Tool
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Generation Jobs Status -->
+      @if(generationJobs.length > 0) {
+        <div class="generation-jobs-panel">
+          <div class="jobs-header">
+            <h4>🎬 Primer Generation Queue</h4>
+            <button class="btn-clear-jobs" (click)="clearCompletedJobs()">Clear Completed</button>
+          </div>
+          <div class="jobs-list">
+            @for(job of generationJobs; track $index) {
+              <div class="job-item" [ngClass]="getJobStatusClass(job.status)">
+                <div class="job-info">
+                  <span class="job-tool">{{ job.toolName }}</span>
+                  <span class="job-primer">{{ job.primerTitle }}</span>
+                </div>
+                @if(job.status === 'processing') {
+                  <div class="job-progress">
+                    <div class="progress-bar">
+                      <div class="progress-fill" [style.width.%]="job.progress"></div>
+                    </div>
+                    <span class="progress-text">{{ job.progress }}% - {{ job.currentStep }}</span>
+                  </div>
+                }
+                <div class="job-status">
+                  <span class="status-badge" [ngClass]="getJobStatusClass(job.status)">{{ job.status }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- ============================================
+           ENHANCED TOOLS CARDS GRID
+           ============================================ -->
+      @if(roleTools.length > 0) {
+        <div class="tools-cards-container">
+          <div class="tools-cards-header">
+            <h4>🛠️ Tools for {{ selectedRole }}</h4>
+            <div class="view-toggle">
+              <button class="view-btn" [class.active]="viewMode === 'grid'" (click)="viewMode = 'grid'">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="3" width="7" height="7"></rect>
+                  <rect x="3" y="14" width="7" height="7"></rect>
+                  <rect x="14" y="14" width="7" height="7"></rect>
+                </svg>
+              </button>
+              <button class="view-btn" [class.active]="viewMode === 'list'" (click)="viewMode = 'list'">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="8" y1="6" x2="21" y2="6"></line>
+                  <line x1="8" y1="12" x2="21" y2="12"></line>
+                  <line x1="8" y1="18" x2="21" y2="18"></line>
+                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <div class="tools-cards-grid" [class.list-view]="viewMode === 'list'">
+            @for(roleTool of roleTools; track $index) {
+              <div class="tool-card-enhanced" [attr.data-category]="roleTool.tool.category">
+                
+                <!-- Category Color Accent -->
+                <div class="tool-card-accent" [ngClass]="'category-' + getCategorySlug(roleTool.tool.category)"></div>
+                
+                <!-- Card Header -->
+                <div class="tool-card-header-enhanced">
+                  <div class="tool-icon-wrapper" [ngClass]="'category-' + getCategorySlug(roleTool.tool.category)">
+                    <span class="tool-icon">{{ getCategoryIcon(roleTool.tool.category) }}</span>
+                  </div>
+                  
+                  <div class="tool-info">
+                    <h4 class="tool-name-enhanced">{{ roleTool.tool.toolName }}</h4>
+                    <div class="tool-badges">
+                      <span class="category-badge">{{ roleTool.tool.category }}</span>
+                      <span class="level-badge" [ngClass]="getLevelClass(roleTool.tool.levelNumber)">
+                        {{ roleTool.requiredLevel }}
+                      </span>
+                      @if(roleTool.isRequired) {
+                        <span class="required-badge">⭐ Required</span>
+                      }
+                    </div>
+                  </div>
+                  
+                  <!-- Completion Ring -->
+                  <div class="completion-ring" [attr.data-progress]="getToolCompletionPercent(roleTool)">
+                    <svg viewBox="0 0 36 36" class="circular-chart">
+                      <path class="circle-bg"
+                        d="M18 2.0845
+                          a 15.9155 15.9155 0 0 1 0 31.831
+                          a 15.9155 15.9155 0 0 1 0 -31.831"
+                      />
+                      <path class="circle-progress"
+                        [attr.stroke-dasharray]="getToolCompletionPercent(roleTool) + ', 100'"
+                        d="M18 2.0845
+                          a 15.9155 15.9155 0 0 1 0 31.831
+                          a 15.9155 15.9155 0 0 1 0 -31.831"
+                      />
+                    </svg>
+                    <span class="completion-text">{{ getToolCompletionPercent(roleTool) }}%</span>
+                  </div>
+                </div>
+                
+                <!-- Description -->
+                <p class="tool-description-enhanced">{{ roleTool.tool.description }}</p>
+                
+                <!-- Keywords -->
+                @if(roleTool.tool.keywords && roleTool.tool.keywords.length > 0) {
+                  <div class="tool-keywords-enhanced">
+                    @for(keyword of roleTool.tool.keywords.slice(0, 4); track $index) {
+                      <span class="keyword-chip">{{ keyword }}</span>
+                    }
+                    @if(roleTool.tool.keywords.length > 4) {
+                      <span class="keyword-more">+{{ roleTool.tool.keywords.length - 4 }}</span>
+                    }
+                  </div>
+                }
+                
+                <!-- Learning Resources Section -->
+                <div class="learning-resources-section">
+                  
+                  <!-- Primers -->
+                  <div class="resource-block primers-block" [class.has-items]="getPrimerCount(roleTool.tool.toolName) > 0">
+                    <div class="resource-header" (click)="toggleResourceExpand(roleTool, 'primers')">
+                      <div class="resource-title">
+                        <span class="resource-icon">🎬</span>
+                        <span>Primers</span>
+                        <span class="resource-count">{{ getPrimerCount(roleTool.tool.toolName) }}</span>
+                      </div>
+                      <button class="btn-add-resource" (click)="openPrimerModal(roleTool.tool.toolName); $event.stopPropagation()">
+                        + Add
+                      </button>
+                    </div>
+                    
+                    @if(getPrimerCount(roleTool.tool.toolName) > 0) {
+                      <div class="resource-items">
+                        @for(primer of getPrimersForTool(roleTool.tool.toolName); track $index) {
+                          <div class="resource-item primer-item">
+                            <span class="item-icon">{{ getPrimerTypeConfig(primer.type).icon }}</span>
+                            <span class="item-title">{{ primer.title }}</span>
+                            <span class="item-duration">{{ primer.duration }} min</span>
+                            @if(primer.status === 'ready') {
+                              <span class="item-status ready">✓</span>
+                            }
+                            <button class="btn-remove-sm" (click)="removePrimer(roleTool.tool.toolName, primer.primerId)">×</button>
+                          </div>
+                        }
+                      </div>
+                    } @else {
+                      <div class="resource-empty">
+                        <span>No primers yet</span>
+                        <button class="btn-create-first" (click)="openPrimerModal(roleTool.tool.toolName)">
+                          Create 5-15 min intro
+                        </button>
+                      </div>
+                    }
+                  </div>
+                  
+                  <!-- Mastery Tracks -->
+                  <div class="resource-block mastery-block" [class.has-items]="getMasteryCount(roleTool.tool.toolName) > 0">
+                    <div class="resource-header">
+                      <div class="resource-title">
+                        <span class="resource-icon">📚</span>
+                        <span>Mastery Tracks</span>
+                        <span class="resource-count">{{ getMasteryCount(roleTool.tool.toolName) }}</span>
+                        <span class="resource-hours">{{ roleTool.tool.estimatedHours }}h</span>
+                      </div>
+                      <button class="btn-add-resource" (click)="openMasteryModal(roleTool.tool.toolName)">
+                        + Link
+                      </button>
+                    </div>
+                    
+                    @if(getMasteryCount(roleTool.tool.toolName) > 0) {
+                      <div class="resource-items">
+                        @for(track of getMasteryTracksForTool(roleTool.tool.toolName); track $index) {
+                          <div class="resource-item mastery-item">
+                            <span class="item-icon">{{ getMasterySourceConfig(track.source).icon }}</span>
+                            <span class="item-title">{{ track.title }}</span>
+                            <span class="item-duration">{{ track.duration }}h</span>
+                            @if(track.hasCertification) {
+                              <span class="item-cert">🏆</span>
+                            }
+                            @if(track.sourceUrl) {
+                              <a [href]="track.sourceUrl" target="_blank" class="item-link">↗</a>
+                            }
+                            <button class="btn-remove-sm" (click)="removeMasteryTrack(roleTool.tool.toolName, track.trackId)">×</button>
+                          </div>
+                        }
+                      </div>
+                    } @else {
+                      <div class="resource-empty">
+                        <span>No courses linked</span>
+                        <div class="quick-search-btns">
+                          <button class="btn-search-sm" (click)="searchMasteryCourse('linkedin_learning', roleTool.tool.toolName)">LinkedIn</button>
+                          <button class="btn-search-sm" (click)="searchMasteryCourse('coursera', roleTool.tool.toolName)">Coursera</button>
+                          <button class="btn-search-sm" (click)="searchMasteryCourse('udemy', roleTool.tool.toolName)">Udemy</button>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+                
+                <!-- Card Actions -->
+                <div class="tool-card-actions-enhanced">
+                  <button class="btn-action edit" (click)="editTool(roleTool)" title="Edit tool">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                    Edit
+                  </button>
+                  <button class="btn-action delete" (click)="removeTool(roleTool)" title="Remove tool">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="3 6 5 6 21 6"></polyline>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    Remove
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Empty State -->
+      @if(roleTools.length === 0 && !showAISuggestions) {
+        <div class="empty-tools-enhanced">
+          <div class="empty-illustration">
+            <div class="empty-icon-ring">
+              <span class="empty-icon">🛠️</span>
+            </div>
+          </div>
+          <h4>No tools defined for {{ selectedRole }}</h4>
+          <p>Get started by generating tools with AI or adding them manually</p>
+          <div class="empty-actions">
+            <button class="btn-ai-generate-lg" (click)="generateToolsWithAI()">
+              <span class="btn-icon">🤖</span>
+              Generate with AI
+            </button>
+            <button class="btn-add-manual" (click)="openAddForm()">
+              <span class="btn-icon">+</span>
+              Add Manually
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Save Message -->
+  @if(saveMessage) {
+    <div class="save-message" [class.success]="!saveMessage.includes('Error')">
       {{ saveMessage }}
     </div>
+  }
 
-    <!-- AI Error Message -->
-    <div class="alert-error" *ngIf="aiError">
-      {{ aiError }}
-    </div>
-
-    <!-- AI Suggestions Panel -->
-    <div class="ai-suggestions-panel" *ngIf="showAISuggestions && aiSuggestions.length > 0">
-      <div class="ai-panel-header">
-        <div>
-          <h4 class="ai-panel-title">🤖 AI-Generated Tool Suggestions</h4>
-          <p class="ai-panel-subtitle">
-            {{ aiSuggestions.length }} tools suggested for <strong>{{ selectedRole }}</strong>
-          </p>
+  <!-- Add/Edit Tool Modal -->
+  @if(showAddForm) {
+    <div class="modal-overlay" (click)="closeAddForm()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h4>{{ editingTool ? 'Edit Tool' : 'Add New Tool' }}</h4>
+          <button class="btn-close" (click)="closeAddForm()">×</button>
         </div>
-        <div class="ai-panel-actions">
-          <button class="btn-add-all" (click)="addAllSuggestions()">
-            ✓ Add All ({{ aiSuggestions.length }})
-          </button>
-          <button class="btn-close-panel" (click)="closeAISuggestions()">
-            ✕ Close
-          </button>
-        </div>
-      </div>
-      
-      <div class="ai-suggestions-grid">
-        <div class="ai-suggestion-card" *ngFor="let suggestion of aiSuggestions">
-          <div class="suggestion-header">
-            <div class="suggestion-icon">{{ getCategoryIcon(suggestion.category) }}</div>
-            <div class="suggestion-title-section">
-              <h5 class="suggestion-name">{{ suggestion.toolName }}</h5>
-              <span class="suggestion-category">{{ suggestion.category }}</span>
+        
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Tool Name *</label>
+            <input type="text" class="form-input" [(ngModel)]="newToolName" placeholder="e.g., Docker, React, AWS">
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Category *</label>
+              <select class="form-select" [(ngModel)]="newToolCategory">
+                <option value="">Select Category</option>
+                @for(cat of toolCategories; track $index) {
+                  <option [value]="cat">{{ cat }}</option>
+                }
+              </select>
             </div>
-            <div class="suggestion-level" [ngClass]="getLevelClass(suggestion.requiredLevel)">
-              {{ suggestion.requiredLevel }}
-            </div>
-          </div>
-          
-          <p class="suggestion-description">{{ suggestion.description }}</p>
-          
-          <div class="suggestion-keywords">
-            <span class="keyword-tag" *ngFor="let kw of suggestion.keywords?.slice(0, 4)">{{ kw }}</span>
-          </div>
-          
-          <div class="suggestion-meta">
-            <span class="meta-item">⏱️ {{ suggestion.estimatedHours }}h</span>
-            <span class="meta-item" *ngIf="suggestion.isRequired">
-              <span class="required-dot"></span> Required
-            </span>
-          </div>
-          
-          <!-- Suggested Courses -->
-          <div class="suggested-courses" *ngIf="suggestion.suggestedCourses && suggestion.suggestedCourses.length > 0">
-            <h6 class="courses-title">Suggested Courses:</h6>
-            <div class="course-chip" *ngFor="let course of suggestion.suggestedCourses">
-              <span class="course-name">{{ course.courseName }}</span>
-              <span class="course-meta">{{ course.level }} • {{ course.estimatedHours }}h</span>
+            
+            <div class="form-group">
+              <label class="form-label">Required Level</label>
+              <select class="form-select" [(ngModel)]="newToolLevel">
+                @for(level of toolLevels; track level.value) {
+                  <option [value]="level.value">{{ level.label }}</option>
+                }
+              </select>
             </div>
           </div>
           
-          <button class="btn-add-suggestion" (click)="addSuggestedTool(suggestion)">
-            + Add to Role
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tools Summary -->
-    <div class="tools-summary" *ngIf="roleTools.length > 0">
-      <div class="summary-item">
-        <span class="summary-value">{{ roleTools.length }}</span>
-        <span class="summary-label">Tools</span>
-      </div>
-      <div class="summary-item">
-        <span class="summary-value">{{ getRequiredCount() }}</span>
-        <span class="summary-label">Required</span>
-      </div>
-      <div class="summary-item">
-        <span class="summary-value">{{ getTotalHours() }}h</span>
-        <span class="summary-label">Est. Learning</span>
-      </div>
-    </div>
-
-    <!-- Tool Cards Grid -->
-    <div class="tools-grid" *ngIf="roleTools.length > 0">
-      <div class="tool-card" *ngFor="let roleTool of roleTools">
-        <div class="tool-card-header">
-          <div class="tool-icon">{{ getCategoryIcon(roleTool.tool.category) }}</div>
-          <div class="tool-title-section">
-            <h4 class="tool-name">{{ roleTool.tool.toolName }}</h4>
-            <span class="tool-category">{{ roleTool.tool.category }}</span>
-          </div>
-          <div class="tool-level" [ngClass]="getLevelClass(roleTool.requiredLevel)">
-            {{ roleTool.requiredLevel }}
-          </div>
-        </div>
-        
-        <p class="tool-description">{{ roleTool.tool.description }}</p>
-        
-        <div class="tool-keywords">
-          <span class="keyword-tag" *ngFor="let keyword of roleTool.tool.keywords?.slice(0, 4)">
-            {{ keyword }}
-          </span>
-          <span class="keyword-more" *ngIf="roleTool.tool.keywords && roleTool.tool.keywords.length > 4">
-            +{{ roleTool.tool.keywords.length - 4 }} more
-          </span>
-        </div>
-        
-        <div class="tool-meta">
-          <span class="meta-item" *ngIf="roleTool.isRequired">
-            <span class="required-dot"></span> Required
-          </span>
-          <span class="meta-item">
-            ⏱️ {{ roleTool.tool.estimatedHours }}h estimated
-          </span>
-        </div>
-
-        <!-- Suggested Courses in Card -->
-        <div class="card-courses" *ngIf="roleTool.suggestedCourses && roleTool.suggestedCourses.length > 0">
-          <h6 class="card-courses-title">📚 AI Suggested Courses:</h6>
-          <div class="card-course-item" *ngFor="let course of roleTool.suggestedCourses">
-            <span class="card-course-name">{{ course.courseName }}</span>
-            <span class="card-course-meta">{{ course.level }} • {{ course.estimatedHours }}h</span>
-          </div>
-        </div>
-
-        <!-- Linked LMS Courses -->
-        <div class="linked-courses-section">
-          <div class="linked-courses-header">
-            <h6 class="linked-courses-title">
-              📖 LMS Courses 
-              <span class="course-count-badge" [ngClass]="{'has-courses': getCourseCount(roleTool.tool.toolName) > 0}">
-                {{ getCourseCount(roleTool.tool.toolName) }}
-              </span>
-            </h6>
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea class="form-textarea" [(ngModel)]="newToolDescription" rows="3" placeholder="Brief description of the tool"></textarea>
           </div>
           
-          <!-- List of linked courses -->
-          <div class="linked-courses-list" *ngIf="getCourseCount(roleTool.tool.toolName) > 0">
-            <div class="linked-course-item" *ngFor="let course of getCoursesForTool(roleTool.tool.toolName)">
-              <div class="linked-course-info">
-                <span class="linked-course-name">{{ course.courseName }}</span>
-                <span class="linked-course-meta">{{ course.courseType }} • {{ course.duration }}</span>
-              </div>
-              <div class="linked-course-actions">
-                <button class="btn-view-course" (click)="viewCourse(course.courseId)" title="View Course">👁️</button>
-                <button class="btn-unlink-course" (click)="unlinkCourse(roleTool.tool.toolName, course.courseId)" title="Unlink">✕</button>
-              </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Keywords (comma-separated)</label>
+              <input type="text" class="form-input" [(ngModel)]="newToolKeywords" placeholder="docker, containers, devops">
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Mastery Hours</label>
+              <input type="number" class="form-input" [(ngModel)]="newToolHours" min="1" max="200">
             </div>
           </div>
           
-          <!-- No courses message -->
-          <div class="no-courses-message" *ngIf="getCourseCount(roleTool.tool.toolName) === 0">
-            <span>No courses linked yet</span>
-          </div>
-          
-          <!-- Course action buttons -->
-          <div class="course-action-buttons">
-            <button 
-              class="btn-link-course"
-              (click)="openLinkCourseModal(roleTool.tool.toolName)"
-              title="Link existing course">
-              🔗 Link Course
-            </button>
-            <button 
-              class="btn-create-course"
-              (click)="launchVideoStudio(roleTool.tool)"
-              title="Create new course in Video Studio">
-              🎬 Create in Video Studio
-            </button>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="newToolIsRequired">
+              <span>Required for this role</span>
+            </label>
           </div>
         </div>
         
-        <div class="tool-actions">
-          <button 
-            class="btn-action btn-linkedin"
-            (click)="searchLinkedIn(roleTool.tool)"
-            title="Search LinkedIn Learning">
-            🔍 LinkedIn
+        <div class="modal-footer">
+          <button class="btn-cancel" (click)="closeAddForm()">Cancel</button>
+          <button class="btn-save" (click)="saveTool()" [disabled]="!newToolName || !newToolCategory">
+            {{ editingTool ? 'Update' : 'Add Tool' }}
           </button>
-          <button 
-            class="btn-action btn-coursera"
-            (click)="searchCoursera(roleTool.tool)"
-            title="Search Coursera">
-            🔍 Coursera
-          </button>
-          <button 
-            class="btn-action btn-ai"
-            (click)="onGenerateCourse(roleTool.tool)"
-            title="Generate Course with AI">
-            🤖 Generate
-          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Create Primer Modal -->
+  @if(showPrimerModal) {
+    <div class="modal-overlay" (click)="closePrimerModal()">
+      <div class="modal-content modal-primer" (click)="$event.stopPropagation()">
+        <div class="modal-header primer-modal-header">
+          <h4>🎬 Create Primer for {{ primerToolName }}</h4>
+          <button class="btn-close" (click)="closePrimerModal()">×</button>
         </div>
         
-        <div class="tool-card-footer">
-          <button class="btn-edit" (click)="editRoleTool(roleTool)">Edit</button>
-          <button class="btn-delete" (click)="deleteTool(roleTool)">Remove</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Empty State for Tools -->
-    <div class="empty-tools" *ngIf="roleTools.length === 0 && !showAISuggestions">
-      <div class="empty-icon">📭</div>
-      <h4>No Tools Assigned</h4>
-      <p>This role doesn't have any tools assigned yet.</p>
-      <div class="empty-actions">
-        <button class="btn-ai-generate" (click)="generateToolsWithAI()" [disabled]="isGeneratingAI">
-          <span *ngIf="!isGeneratingAI">🤖 Generate with AI</span>
-          <span *ngIf="isGeneratingAI"><span class="spinner"></span> Generating...</span>
-        </button>
-        <button class="btn-outline" (click)="openAddToolModal()">+ Add Manually</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- NEW: Add Tool Modal Component -->
-  <app-add-tool-modal
-    #addToolModal
-    [jobRoleId]="selectedRoleId"
-    [jobRoleName]="selectedRole"
-    [tenantId]="selectedTenantId ? +selectedTenantId : 0"
-    (toolSaved)="onToolSaved($event)"
-    (modalClosed)="onToolModalClosed()"
-  ></app-add-tool-modal>
-
-  <!-- Link Course Modal (Keep existing) -->
-  <div class="link-course-overlay" *ngIf="showLinkCourseModal">
-    <div class="link-course-modal">
-      <div class="link-course-header">
-        <h4>Link Course to {{ linkingToolName }}</h4>
-        <button class="btn-close" (click)="closeLinkCourseModal()">×</button>
-      </div>
-      
-      <div class="link-course-body">
-        <div class="form-group">
-          <label class="form-label">Select Course from LMS</label>
-          
-          <div class="loading-courses" *ngIf="isLoadingCourses">
-            <span class="spinner"></span> Loading courses...
-          </div>
-          
-          <div class="course-select-list" *ngIf="!isLoadingCourses">
-            <div 
-              class="course-select-item"
-              *ngFor="let course of availableCourses"
-              [class.selected]="selectedCourseId === course.courseId"
-              (click)="selectedCourseId = course.courseId">
-              <div class="course-select-radio">
-                <span class="radio-dot" *ngIf="selectedCourseId === course.courseId"></span>
-              </div>
-              <div class="course-select-info">
-                <span class="course-select-name">{{ course.courseName }}</span>
-                <span class="course-select-meta">{{ course.courseType }} • {{ course.duration }}</span>
+        @if(!isGeneratingPrimer) {
+          <div class="modal-body">
+            <p class="modal-intro">Create a 5-15 minute introductory video using Video Studio</p>
+            
+            <!-- Primer Type Selection -->
+            <div class="form-group">
+              <label class="form-label">Primer Type</label>
+              <div class="primer-type-grid">
+                @for(ptype of primerTypes; track ptype.type) {
+                  <div 
+                    class="primer-type-option"
+                    [class.selected]="primerType === ptype.type"
+                    (click)="primerType = ptype.type">
+                    <span class="primer-type-icon">{{ ptype.icon }}</span>
+                    <span class="primer-type-label">{{ ptype.label }}</span>
+                    <span class="primer-type-duration">{{ ptype.duration.min }}-{{ ptype.duration.max }} min</span>
+                    <span class="primer-type-desc">{{ ptype.description }}</span>
+                  </div>
+                }
               </div>
             </div>
             
-            <div class="no-courses-available" *ngIf="availableCourses.length === 0">
-              No courses available. Create one in Video Studio first.
+            <!-- Primer Title -->
+            <div class="form-group">
+              <label class="form-label">Primer Title</label>
+              <input type="text" class="form-input" [(ngModel)]="primerTitle" placeholder="e.g., Docker Primer: What, Why & How">
             </div>
+            
+            <!-- Topics to Cover -->
+            <div class="form-group">
+              <label class="form-label">Topics to Cover (one per line)</label>
+              <textarea class="form-textarea" [(ngModel)]="primerTopics" rows="5" placeholder="What is Docker?
+Why use containers?
+Docker vs VMs
+Basic Docker workflow"></textarea>
+            </div>
+          </div>
+        } @else {
+          <!-- Generation Progress -->
+          <div class="modal-body primer-progress">
+            <div class="progress-content">
+              <div class="progress-spinner"></div>
+              <h4>Generating Primer...</h4>
+              <p>{{ primerStep }}</p>
+              <div class="progress-bar-large">
+                <div class="progress-fill" [style.width.%]="primerProgress"></div>
+              </div>
+              <span class="progress-percent">{{ primerProgress }}%</span>
+            </div>
+          </div>
+        }
+        
+        <div class="modal-footer">
+          <button class="btn-cancel" (click)="closePrimerModal()" [disabled]="isGeneratingPrimer">Cancel</button>
+          <button 
+            class="btn-generate-primer" 
+            (click)="generatePrimer()" 
+            [disabled]="!primerTitle || !primerTopics || isGeneratingPrimer">
+            🎬 Generate Primer
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Link Mastery Track Modal -->
+  @if(showMasteryModal) {
+    <div class="modal-overlay" (click)="closeMasteryModal()">
+      <div class="modal-content modal-mastery" (click)="$event.stopPropagation()">
+        <div class="modal-header mastery-modal-header">
+          <h4>📚 Link Mastery Track for {{ masteryToolName }}</h4>
+          <button class="btn-close" (click)="closeMasteryModal()">×</button>
+        </div>
+        
+        <div class="modal-body">
+          <p class="modal-intro">Link a curated course for deep skill development (10-40+ hours)</p>
+          
+          <!-- Quick Search -->
+          <div class="mastery-quick-search">
+            <span class="search-label">Search for courses:</span>
+            <div class="search-buttons">
+              <button class="btn-search-provider" (click)="searchMasteryCourse('linkedin_learning', masteryToolName)">
+                🔗 LinkedIn Learning
+              </button>
+              <button class="btn-search-provider" (click)="searchMasteryCourse('coursera', masteryToolName)">
+                🎓 Coursera
+              </button>
+              <button class="btn-search-provider" (click)="searchMasteryCourse('udemy', masteryToolName)">
+                📚 Udemy
+              </button>
+            </div>
+          </div>
+          
+          <hr class="modal-divider">
+          
+          <!-- Course Details Form -->
+          <div class="form-group">
+            <label class="form-label">Course Title *</label>
+            <input type="text" class="form-input" [(ngModel)]="masteryTitle" placeholder="e.g., Docker & Kubernetes Complete Guide">
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Source</label>
+              <select class="form-select" [(ngModel)]="masterySource">
+                @for(src of masterySources; track src.value) {
+                  <option [value]="src.value">{{ src.icon }} {{ src.label }}</option>
+                }
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Duration (hours)</label>
+              <input type="number" class="form-input" [(ngModel)]="masteryDuration" min="1" max="200">
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Level</label>
+              <select class="form-select" [(ngModel)]="masteryLevel">
+                <option value="Beginner">Beginner</option>
+                <option value="Intermediate">Intermediate</option>
+                <option value="Advanced">Advanced</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label class="checkbox-label mastery-cert">
+                <input type="checkbox" [(ngModel)]="masteryHasCert">
+                <span>🏆 Has Certification</span>
+              </label>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Course URL (optional)</label>
+            <input type="text" class="form-input" [(ngModel)]="masteryUrl" placeholder="https://...">
           </div>
         </div>
         
-        <div class="or-divider">
-          <span>or</span>
+        <div class="modal-footer">
+          <button class="btn-cancel" (click)="closeMasteryModal()">Cancel</button>
+          <button class="btn-save" (click)="addMasteryTrack()" [disabled]="!masteryTitle">
+            📚 Add Mastery Track
+          </button>
         </div>
-        
-        <button 
-          class="btn-create-new-course"
-          (click)="closeLinkCourseModal(); launchVideoStudio({toolName: linkingToolName, category: '', level: 'Level 3', levelNumber: 3, description: '', keywords: [], estimatedHours: 40, toolId: 0})">
-          🎬 Create New Course in Video Studio
-        </button>
-      </div>
-      
-      <div class="link-course-footer">
-        <button class="btn-cancel" (click)="closeLinkCourseModal()">Cancel</button>
-        <button 
-          class="btn-save"
-          (click)="linkCourseToTool()"
-          [disabled]="!selectedCourseId">
-          Link Course
-        </button>
       </div>
     </div>
-  </div>
+  }
 </div>

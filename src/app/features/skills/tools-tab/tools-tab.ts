@@ -1,9 +1,10 @@
-import { Component, OnInit, Input, Output, EventEmitter, ViewChild } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { environment } from '../../../../environments/environment';
 import { SkillService } from '../../../services/skill-services';
-import { AddToolModalComponent, ToolSaveEvent, RoleTool as ModalRoleTool } from './add-tool-modal/add-tool-modal.component';
+import { TenantService } from '../../../services/tenant-service';
+import { getTenantId } from '../../../services/utility';
 
 // ============================================
 // INTERFACES
@@ -17,7 +18,7 @@ export interface Tool {
   levelNumber: number;
   description: string;
   keywords: string[];
-  estimatedHours: number;
+  estimatedHours: number;  // Total mastery hours
   linkedInSearchQuery?: string;
   courseraSearchQuery?: string;
 }
@@ -32,9 +33,66 @@ export interface RoleTool {
   requiredLevelNumber: number;
   isRequired: boolean;
   priority: number;
-  suggestedCourses?: AISuggestedCourse[];
 }
 
+// ============================================
+// TWO-TIER COURSE MODEL
+// ============================================
+
+// Tier 1: Primers (Video Studio - 5-15 min)
+export interface Primer {
+  primerId: number;
+  toolName: string;
+  title: string;
+  type: PrimerType;
+  duration: number;  // minutes
+  status: 'draft' | 'generating' | 'ready' | 'published';
+  videoStudioJobId?: string;
+  thumbnailUrl?: string;
+  scormPackageUrl?: string;
+  createdAt: Date;
+}
+
+export type PrimerType = 
+  | 'concept_primer'      // What is X? Why does it matter?
+  | 'quickstart'          // Getting started in 10 minutes
+  | 'key_concepts'        // Core concepts overview
+  | 'best_practices'      // Do's and don'ts
+  | 'use_cases';          // When and where to use
+
+export interface PrimerTypeConfig {
+  type: PrimerType;
+  label: string;
+  icon: string;
+  duration: { min: number; max: number; default: number };
+  description: string;
+  promptTemplate: string;
+}
+
+// Tier 2: Mastery Tracks (Curated - 10-40+ hours)
+export interface MasteryTrack {
+  trackId: number;
+  toolName: string;
+  title: string;
+  source: MasterySource;
+  sourceUrl: string;
+  duration: number;  // hours
+  level: string;
+  hasCertification: boolean;
+  rating?: number;
+  provider?: string;  // LinkedIn Learning, Coursera, Udemy, Internal
+  addedAt: Date;
+}
+
+export type MasterySource = 
+  | 'linkedin_learning'
+  | 'coursera'
+  | 'udemy'
+  | 'pluralsight'
+  | 'internal'
+  | 'other';
+
+// AI Suggestions
 export interface AIToolSuggestion {
   toolName: string;
   category: string;
@@ -42,51 +100,34 @@ export interface AIToolSuggestion {
   requiredLevelNumber: number;
   description: string;
   keywords: string[];
-  estimatedHours: number;
+  estimatedHours: number;  // Total mastery hours
   isRequired: boolean;
   priority: number;
-  suggestedCourses: AISuggestedCourse[];
+  // Primer suggestions
+  primerTopics: string[];           // Topics for 10-min primer
+  recommendedPrimerType: PrimerType;
+  // Mastery track suggestions
+  masteryRecommendations: MasteryRecommendation[];
 }
 
-export interface AISuggestedCourse {
+export interface MasteryRecommendation {
+  provider: string;
   courseName: string;
-  level: string;
-  estimatedHours: number;
-  description: string;
-  learningObjectives: string[];
-}
-
-export interface CourseForTool {
-  courseId: number;
-  courseName: string;
-  courseType: string;
   duration: string;
-  requiredLevel: string;
-  isPrimary: boolean;
-  thumbnailUrl: string;
-  status: string;
+  level: string;
+  searchUrl: string;
 }
 
-export interface CourseTool {
-  courseToolId: number;
-  courseId: number;
+// Video Studio Integration
+export interface VideoStudioJob {
+  jobId: string;
   toolName: string;
-  toolCategory: string;
-  requiredLevel: string;
-  requiredLevelNumber: number;
-  isPrimary: boolean;
-  keywords: string[];
-  estimatedHours: number;
-}
-
-export interface LTILaunchParams {
-  tenantId: number;
-  userId: number;
-  toolName: string;
-  toolCategory: string;
-  requiredLevel: string;
-  keywords: string;
-  estimatedHours: number;
+  primerTitle: string;
+  primerType: PrimerType;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  progress: number;
+  currentStep: string;
+  createdAt: Date;
 }
 
 // ============================================
@@ -96,47 +137,403 @@ export interface LTILaunchParams {
 export const TOOL_CATEGORIES = [
   'Programming Language', 'Frontend Framework', 'Backend Framework', 'Database',
   'Cloud Platform', 'DevOps Tool', 'Version Control', 'Methodology',
-  'Soft Skill', 'Certification', 'Design Tool', 'Project Management', 'Testing Tool', 'AI/ML Tool'
+  'Soft Skill', 'Certification', 'Design Tool', 'Project Management', 
+  'Testing Tool', 'AI/ML Tool', 'Security Tool', 'Data Tool'
 ];
 
 export const TOOL_LEVELS = [
-  { label: 'Level 1 - Beginner', value: 'Level 1', number: 1 },
-  { label: 'Level 2 - Foundation', value: 'Level 2', number: 2 },
-  { label: 'Level 3 - Intermediate', value: 'Level 3', number: 3 },
-  { label: 'Level 4 - Advanced', value: 'Level 4', number: 4 },
-  { label: 'Level 5 - Expert', value: 'Level 5', number: 5 }
+  { value: 1, label: 'Level 1 - Awareness', description: 'Basic understanding' },
+  { value: 2, label: 'Level 2 - Foundation', description: 'Can perform with guidance' },
+  { value: 3, label: 'Level 3 - Practitioner', description: 'Independent work' },
+  { value: 4, label: 'Level 4 - Advanced', description: 'Can lead and mentor' },
+  { value: 5, label: 'Level 5 - Expert', description: 'Industry expert' }
 ];
 
-export const MASTER_TOOLS: Tool[] = [
-  { toolId: 1, toolName: 'Java', category: 'Programming Language', level: 'Intermediate', levelNumber: 3, description: 'Object-oriented programming language for enterprise applications', keywords: ['java', 'jdk', 'spring', 'oop'], estimatedHours: 60 },
-  { toolId: 2, toolName: 'Python', category: 'Programming Language', level: 'Intermediate', levelNumber: 3, description: 'Versatile language for web, data science, and automation', keywords: ['python', 'django', 'flask', 'ml'], estimatedHours: 50 },
-  { toolId: 3, toolName: 'JavaScript', category: 'Programming Language', level: 'Intermediate', levelNumber: 3, description: 'Core language for web development', keywords: ['javascript', 'js', 'es6', 'nodejs'], estimatedHours: 45 },
-  { toolId: 4, toolName: 'TypeScript', category: 'Programming Language', level: 'Intermediate', levelNumber: 3, description: 'Typed superset of JavaScript', keywords: ['typescript', 'ts', 'angular'], estimatedHours: 30 },
-  { toolId: 5, toolName: 'C#', category: 'Programming Language', level: 'Intermediate', levelNumber: 3, description: 'Microsoft language for .NET applications', keywords: ['csharp', 'dotnet', 'unity'], estimatedHours: 55 },
-  { toolId: 10, toolName: 'Angular', category: 'Frontend Framework', level: 'Intermediate', levelNumber: 3, description: 'TypeScript-based framework for SPAs', keywords: ['angular', 'typescript', 'spa', 'rxjs'], estimatedHours: 50 },
-  { toolId: 11, toolName: 'React', category: 'Frontend Framework', level: 'Intermediate', levelNumber: 3, description: 'JavaScript library for building UIs', keywords: ['react', 'jsx', 'hooks', 'redux'], estimatedHours: 45 },
-  { toolId: 12, toolName: 'Vue.js', category: 'Frontend Framework', level: 'Intermediate', levelNumber: 3, description: 'Progressive JavaScript framework', keywords: ['vue', 'vuex', 'spa'], estimatedHours: 40 },
-  { toolId: 20, toolName: 'Spring Boot', category: 'Backend Framework', level: 'Intermediate', levelNumber: 3, description: 'Java-based framework for microservices', keywords: ['spring', 'java', 'microservices', 'api'], estimatedHours: 50 },
-  { toolId: 21, toolName: 'Node.js', category: 'Backend Framework', level: 'Intermediate', levelNumber: 3, description: 'JavaScript runtime for server-side', keywords: ['nodejs', 'express', 'javascript'], estimatedHours: 40 },
-  { toolId: 22, toolName: '.NET Core', category: 'Backend Framework', level: 'Intermediate', levelNumber: 3, description: 'Cross-platform framework for modern apps', keywords: ['dotnet', 'csharp', 'api'], estimatedHours: 50 },
-  { toolId: 30, toolName: 'MySQL', category: 'Database', level: 'Intermediate', levelNumber: 3, description: 'Popular relational database', keywords: ['mysql', 'sql', 'database'], estimatedHours: 30 },
-  { toolId: 31, toolName: 'PostgreSQL', category: 'Database', level: 'Intermediate', levelNumber: 3, description: 'Advanced relational database', keywords: ['postgresql', 'sql', 'database'], estimatedHours: 35 },
-  { toolId: 32, toolName: 'MongoDB', category: 'Database', level: 'Intermediate', levelNumber: 3, description: 'NoSQL document database', keywords: ['mongodb', 'nosql', 'json'], estimatedHours: 25 },
-  { toolId: 40, toolName: 'AWS', category: 'Cloud Platform', level: 'Intermediate', levelNumber: 3, description: 'Amazon Web Services cloud platform', keywords: ['aws', 'cloud', 'ec2', 's3', 'lambda'], estimatedHours: 60 },
-  { toolId: 41, toolName: 'Azure', category: 'Cloud Platform', level: 'Intermediate', levelNumber: 3, description: 'Microsoft Azure cloud platform', keywords: ['azure', 'microsoft', 'cloud'], estimatedHours: 55 },
-  { toolId: 42, toolName: 'Google Cloud', category: 'Cloud Platform', level: 'Intermediate', levelNumber: 3, description: 'Google Cloud Platform services', keywords: ['gcp', 'google', 'cloud', 'bigquery'], estimatedHours: 50 },
-  { toolId: 50, toolName: 'Docker', category: 'DevOps Tool', level: 'Intermediate', levelNumber: 3, description: 'Container platform for applications', keywords: ['docker', 'containers', 'devops'], estimatedHours: 30 },
-  { toolId: 51, toolName: 'Kubernetes', category: 'DevOps Tool', level: 'Advanced', levelNumber: 4, description: 'Container orchestration system', keywords: ['kubernetes', 'k8s', 'containers'], estimatedHours: 45 },
-  { toolId: 52, toolName: 'Git', category: 'Version Control', level: 'Beginner', levelNumber: 2, description: 'Distributed version control system', keywords: ['git', 'github', 'version control'], estimatedHours: 15 },
-  { toolId: 53, toolName: 'Jenkins', category: 'DevOps Tool', level: 'Intermediate', levelNumber: 3, description: 'CI/CD automation server', keywords: ['jenkins', 'ci', 'cd', 'pipeline'], estimatedHours: 25 },
-  { toolId: 60, toolName: 'Agile & Scrum', category: 'Methodology', level: 'Intermediate', levelNumber: 3, description: 'Agile project management framework', keywords: ['agile', 'scrum', 'kanban', 'sprint'], estimatedHours: 20 },
-  { toolId: 61, toolName: 'Team Leadership', category: 'Soft Skill', level: 'Intermediate', levelNumber: 3, description: 'Leading teams effectively', keywords: ['leadership', 'management', 'team'], estimatedHours: 30 },
-  { toolId: 62, toolName: 'Technical Communication', category: 'Soft Skill', level: 'Intermediate', levelNumber: 3, description: 'Communicating technical concepts', keywords: ['communication', 'presentation', 'documentation'], estimatedHours: 20 },
-  { toolId: 63, toolName: 'Problem Solving', category: 'Soft Skill', level: 'Intermediate', levelNumber: 3, description: 'Analytical and critical thinking', keywords: ['problem solving', 'critical thinking', 'analysis'], estimatedHours: 25 },
-  { toolId: 70, toolName: 'TensorFlow', category: 'AI/ML Tool', level: 'Advanced', levelNumber: 4, description: 'Machine learning framework', keywords: ['tensorflow', 'ml', 'ai', 'deep learning'], estimatedHours: 50 },
-  { toolId: 71, toolName: 'PyTorch', category: 'AI/ML Tool', level: 'Advanced', levelNumber: 4, description: 'Deep learning framework', keywords: ['pytorch', 'ml', 'ai', 'neural networks'], estimatedHours: 50 },
-  { toolId: 80, toolName: 'Figma', category: 'Design Tool', level: 'Intermediate', levelNumber: 3, description: 'Collaborative design tool', keywords: ['figma', 'ui', 'ux', 'design'], estimatedHours: 25 },
-  { toolId: 81, toolName: 'Adobe XD', category: 'Design Tool', level: 'Intermediate', levelNumber: 3, description: 'UI/UX design tool', keywords: ['adobe', 'xd', 'ui', 'design'], estimatedHours: 25 }
+export const PRIMER_TYPES: PrimerTypeConfig[] = [
+  {
+    type: 'concept_primer',
+    label: 'Concept Primer',
+    icon: '💡',
+    duration: { min: 5, max: 10, default: 7 },
+    description: 'What is it? Why does it matter?',
+    promptTemplate: 'Create a concept primer explaining what {tool} is, why it matters, and its key benefits.'
+  },
+  {
+    type: 'quickstart',
+    label: 'Quickstart Guide',
+    icon: '🚀',
+    duration: { min: 8, max: 15, default: 10 },
+    description: 'Getting started in 10 minutes',
+    promptTemplate: 'Create a quickstart guide for {tool} covering installation, setup, and first steps.'
+  },
+  {
+    type: 'key_concepts',
+    label: 'Key Concepts',
+    icon: '🎯',
+    duration: { min: 10, max: 15, default: 12 },
+    description: 'Core concepts and terminology',
+    promptTemplate: 'Explain the key concepts and terminology of {tool} that every practitioner should know.'
+  },
+  {
+    type: 'best_practices',
+    label: 'Best Practices',
+    icon: '✅',
+    duration: { min: 8, max: 12, default: 10 },
+    description: 'Do\'s, don\'ts, and tips',
+    promptTemplate: 'Cover best practices, common mistakes to avoid, and pro tips for {tool}.'
+  },
+  {
+    type: 'use_cases',
+    label: 'Use Cases',
+    icon: '🔧',
+    duration: { min: 8, max: 12, default: 10 },
+    description: 'When and where to use',
+    promptTemplate: 'Explain common use cases and scenarios where {tool} is the right choice.'
+  }
+];
+
+export const MASTERY_SOURCES: { value: MasterySource; label: string; icon: string; searchUrl: string }[] = [
+  { value: 'linkedin_learning', label: 'LinkedIn Learning', icon: '🔗', searchUrl: 'https://www.linkedin.com/learning/search?keywords=' },
+  { value: 'coursera', label: 'Coursera', icon: '🎓', searchUrl: 'https://www.coursera.org/search?query=' },
+  { value: 'udemy', label: 'Udemy', icon: '📚', searchUrl: 'https://www.udemy.com/courses/search/?q=' },
+  { value: 'pluralsight', label: 'Pluralsight', icon: '▶️', searchUrl: 'https://www.pluralsight.com/search?q=' },
+  { value: 'internal', label: 'Internal Course', icon: '🏢', searchUrl: '' },
+  { value: 'other', label: 'Other', icon: '🌐', searchUrl: '' }
+];
+
+// ============================================
+// SMART DEFAULTS - Pattern-Based Tool Suggestions
+// ============================================
+
+const COMMON_TOOLS: { [key: string]: AIToolSuggestion } = {
+  git: {
+    toolName: 'Git',
+    category: 'Version Control',
+    requiredLevel: 'Level 3 - Practitioner',
+    requiredLevelNumber: 3,
+    description: 'Distributed version control system for tracking code changes and collaboration',
+    keywords: ['version control', 'source code', 'collaboration', 'branching'],
+    estimatedHours: 15,
+    isRequired: true,
+    priority: 1,
+    primerTopics: ['What is Git and why use it?', 'Basic Git workflow', 'Branching and merging', 'Collaboration with remotes'],
+    recommendedPrimerType: 'concept_primer',
+    masteryRecommendations: [
+      { provider: 'LinkedIn Learning', courseName: 'Git Essential Training', duration: '3 hours', level: 'Beginner', searchUrl: '' },
+      { provider: 'Coursera', courseName: 'Version Control with Git', duration: '13 hours', level: 'Intermediate', searchUrl: '' }
+    ]
+  },
+  docker: {
+    toolName: 'Docker',
+    category: 'DevOps Tool',
+    requiredLevel: 'Level 3 - Practitioner',
+    requiredLevelNumber: 3,
+    description: 'Container platform for building, shipping, and running applications',
+    keywords: ['containers', 'devops', 'deployment', 'microservices'],
+    estimatedHours: 30,
+    isRequired: true,
+    priority: 2,
+    primerTopics: ['What are containers?', 'Docker vs Virtual Machines', 'Basic Docker commands', 'When to use Docker'],
+    recommendedPrimerType: 'concept_primer',
+    masteryRecommendations: [
+      { provider: 'LinkedIn Learning', courseName: 'Learning Docker', duration: '2 hours', level: 'Beginner', searchUrl: '' },
+      { provider: 'Udemy', courseName: 'Docker & Kubernetes Complete Guide', duration: '22 hours', level: 'Advanced', searchUrl: '' }
+    ]
+  },
+  agile: {
+    toolName: 'Agile/Scrum',
+    category: 'Methodology',
+    requiredLevel: 'Level 2 - Foundation',
+    requiredLevelNumber: 2,
+    description: 'Iterative approach to project management and software development',
+    keywords: ['scrum', 'kanban', 'sprints', 'ceremonies'],
+    estimatedHours: 20,
+    isRequired: true,
+    priority: 3,
+    primerTopics: ['What is Agile?', 'Agile vs Waterfall', 'Scrum roles and ceremonies', 'Sprint planning basics'],
+    recommendedPrimerType: 'concept_primer',
+    masteryRecommendations: [
+      { provider: 'Coursera', courseName: 'Agile with Atlassian Jira', duration: '12 hours', level: 'Beginner', searchUrl: '' },
+      { provider: 'LinkedIn Learning', courseName: 'Agile Foundations', duration: '2 hours', level: 'Beginner', searchUrl: '' }
+    ]
+  },
+  sql: {
+    toolName: 'SQL',
+    category: 'Database',
+    requiredLevel: 'Level 3 - Practitioner',
+    requiredLevelNumber: 3,
+    description: 'Query language for managing and manipulating relational databases',
+    keywords: ['database', 'queries', 'data', 'relational'],
+    estimatedHours: 25,
+    isRequired: true,
+    priority: 4,
+    primerTopics: ['What is SQL?', 'SELECT, INSERT, UPDATE basics', 'JOINs explained', 'When to use SQL vs NoSQL'],
+    recommendedPrimerType: 'key_concepts',
+    masteryRecommendations: [
+      { provider: 'Coursera', courseName: 'SQL for Data Science', duration: '15 hours', level: 'Beginner', searchUrl: '' },
+      { provider: 'LinkedIn Learning', courseName: 'SQL Essential Training', duration: '3 hours', level: 'Beginner', searchUrl: '' }
+    ]
+  },
+  python: {
+    toolName: 'Python',
+    category: 'Programming Language',
+    requiredLevel: 'Level 3 - Practitioner',
+    requiredLevelNumber: 3,
+    description: 'Versatile programming language used for web development, data science, and automation',
+    keywords: ['programming', 'scripting', 'data science', 'automation'],
+    estimatedHours: 40,
+    isRequired: true,
+    priority: 1,
+    primerTopics: ['Why Python?', 'Python syntax basics', 'Data types and structures', 'Common use cases'],
+    recommendedPrimerType: 'quickstart',
+    masteryRecommendations: [
+      { provider: 'Coursera', courseName: 'Python for Everybody', duration: '20 hours', level: 'Beginner', searchUrl: '' },
+      { provider: 'Udemy', courseName: 'Complete Python Bootcamp', duration: '22 hours', level: 'Beginner', searchUrl: '' }
+    ]
+  },
+  javascript: {
+    toolName: 'JavaScript',
+    category: 'Programming Language',
+    requiredLevel: 'Level 3 - Practitioner',
+    requiredLevelNumber: 3,
+    description: 'Programming language for web development, both frontend and backend',
+    keywords: ['web', 'frontend', 'nodejs', 'programming'],
+    estimatedHours: 45,
+    isRequired: true,
+    priority: 1,
+    primerTopics: ['What is JavaScript?', 'Variables and functions', 'DOM manipulation basics', 'Modern JS features'],
+    recommendedPrimerType: 'quickstart',
+    masteryRecommendations: [
+      { provider: 'Udemy', courseName: 'Complete JavaScript Course', duration: '52 hours', level: 'Beginner', searchUrl: '' },
+      { provider: 'Coursera', courseName: 'JavaScript for Web Development', duration: '15 hours', level: 'Beginner', searchUrl: '' }
+    ]
+  },
+  react: {
+    toolName: 'React',
+    category: 'Frontend Framework',
+    requiredLevel: 'Level 3 - Practitioner',
+    requiredLevelNumber: 3,
+    description: 'JavaScript library for building user interfaces',
+    keywords: ['frontend', 'components', 'UI', 'SPA'],
+    estimatedHours: 35,
+    isRequired: true,
+    priority: 2,
+    primerTopics: ['What is React?', 'Components and JSX', 'State and props', 'When to use React'],
+    recommendedPrimerType: 'concept_primer',
+    masteryRecommendations: [
+      { provider: 'Udemy', courseName: 'React - The Complete Guide', duration: '48 hours', level: 'Intermediate', searchUrl: '' },
+      { provider: 'Coursera', courseName: 'React Basics', duration: '12 hours', level: 'Beginner', searchUrl: '' }
+    ]
+  },
+  angular: {
+    toolName: 'Angular',
+    category: 'Frontend Framework',
+    requiredLevel: 'Level 3 - Practitioner',
+    requiredLevelNumber: 3,
+    description: 'TypeScript-based framework for building web applications',
+    keywords: ['frontend', 'typescript', 'components', 'enterprise'],
+    estimatedHours: 40,
+    isRequired: true,
+    priority: 2,
+    primerTopics: ['What is Angular?', 'Components and modules', 'Data binding', 'Angular vs React'],
+    recommendedPrimerType: 'concept_primer',
+    masteryRecommendations: [
+      { provider: 'Udemy', courseName: 'Angular - The Complete Guide', duration: '35 hours', level: 'Intermediate', searchUrl: '' },
+      { provider: 'Pluralsight', courseName: 'Angular Fundamentals', duration: '10 hours', level: 'Beginner', searchUrl: '' }
+    ]
+  },
+  aws: {
+    toolName: 'AWS',
+    category: 'Cloud Platform',
+    requiredLevel: 'Level 3 - Practitioner',
+    requiredLevelNumber: 3,
+    description: 'Amazon Web Services cloud computing platform',
+    keywords: ['cloud', 'infrastructure', 'serverless', 'EC2', 'S3'],
+    estimatedHours: 50,
+    isRequired: true,
+    priority: 2,
+    primerTopics: ['What is AWS?', 'Core services overview', 'EC2 and S3 basics', 'AWS pricing model'],
+    recommendedPrimerType: 'concept_primer',
+    masteryRecommendations: [
+      { provider: 'Coursera', courseName: 'AWS Cloud Practitioner', duration: '20 hours', level: 'Beginner', searchUrl: '' },
+      { provider: 'Udemy', courseName: 'AWS Solutions Architect', duration: '30 hours', level: 'Advanced', searchUrl: '' }
+    ]
+  },
+  kubernetes: {
+    toolName: 'Kubernetes',
+    category: 'DevOps Tool',
+    requiredLevel: 'Level 4 - Advanced',
+    requiredLevelNumber: 4,
+    description: 'Container orchestration platform for automating deployment and scaling',
+    keywords: ['containers', 'orchestration', 'devops', 'clusters'],
+    estimatedHours: 40,
+    isRequired: false,
+    priority: 5,
+    primerTopics: ['What is Kubernetes?', 'Pods and deployments', 'Services and networking', 'When to use K8s'],
+    recommendedPrimerType: 'concept_primer',
+    masteryRecommendations: [
+      { provider: 'Udemy', courseName: 'Kubernetes for Beginners', duration: '15 hours', level: 'Intermediate', searchUrl: '' },
+      { provider: 'Linux Foundation', courseName: 'CKA Certification', duration: '40 hours', level: 'Advanced', searchUrl: '' }
+    ]
+  },
+  excel: {
+    toolName: 'Microsoft Excel',
+    category: 'Data Tool',
+    requiredLevel: 'Level 3 - Practitioner',
+    requiredLevelNumber: 3,
+    description: 'Spreadsheet software for data analysis and reporting',
+    keywords: ['spreadsheets', 'data analysis', 'formulas', 'pivot tables'],
+    estimatedHours: 20,
+    isRequired: true,
+    priority: 2,
+    primerTopics: ['Excel basics', 'Formulas and functions', 'Pivot tables intro', 'Charts and visualization'],
+    recommendedPrimerType: 'quickstart',
+    masteryRecommendations: [
+      { provider: 'LinkedIn Learning', courseName: 'Excel Essential Training', duration: '5 hours', level: 'Beginner', searchUrl: '' },
+      { provider: 'Coursera', courseName: 'Excel Skills for Business', duration: '25 hours', level: 'Intermediate', searchUrl: '' }
+    ]
+  },
+  powerbi: {
+    toolName: 'Power BI',
+    category: 'Data Tool',
+    requiredLevel: 'Level 3 - Practitioner',
+    requiredLevelNumber: 3,
+    description: 'Business analytics and data visualization tool',
+    keywords: ['visualization', 'dashboards', 'analytics', 'reporting'],
+    estimatedHours: 25,
+    isRequired: true,
+    priority: 3,
+    primerTopics: ['What is Power BI?', 'Connecting to data', 'Creating visualizations', 'Publishing dashboards'],
+    recommendedPrimerType: 'quickstart',
+    masteryRecommendations: [
+      { provider: 'LinkedIn Learning', courseName: 'Power BI Essential Training', duration: '4 hours', level: 'Beginner', searchUrl: '' },
+      { provider: 'Udemy', courseName: 'Microsoft Power BI Complete', duration: '18 hours', level: 'Intermediate', searchUrl: '' }
+    ]
+  },
+  communication: {
+    toolName: 'Business Communication',
+    category: 'Soft Skill',
+    requiredLevel: 'Level 3 - Practitioner',
+    requiredLevelNumber: 3,
+    description: 'Professional written and verbal communication skills',
+    keywords: ['writing', 'presentation', 'email', 'meetings'],
+    estimatedHours: 15,
+    isRequired: true,
+    priority: 3,
+    primerTopics: ['Effective email writing', 'Presentation basics', 'Active listening', 'Meeting etiquette'],
+    recommendedPrimerType: 'best_practices',
+    masteryRecommendations: [
+      { provider: 'LinkedIn Learning', courseName: 'Business Communication Foundations', duration: '2 hours', level: 'Beginner', searchUrl: '' },
+      { provider: 'Coursera', courseName: 'Business Writing', duration: '10 hours', level: 'Beginner', searchUrl: '' }
+    ]
+  },
+  leadership: {
+    toolName: 'Leadership',
+    category: 'Soft Skill',
+    requiredLevel: 'Level 3 - Practitioner',
+    requiredLevelNumber: 3,
+    description: 'Skills for leading teams and driving results',
+    keywords: ['management', 'coaching', 'delegation', 'motivation'],
+    estimatedHours: 25,
+    isRequired: false,
+    priority: 5,
+    primerTopics: ['Leadership styles', 'Delegation basics', 'Giving feedback', 'Building trust'],
+    recommendedPrimerType: 'concept_primer',
+    masteryRecommendations: [
+      { provider: 'Coursera', courseName: 'Leadership Specialization', duration: '20 hours', level: 'Intermediate', searchUrl: '' },
+      { provider: 'LinkedIn Learning', courseName: 'Leadership Foundations', duration: '3 hours', level: 'Beginner', searchUrl: '' }
+    ]
+  },
+  jira: {
+    toolName: 'Jira',
+    category: 'Project Management',
+    requiredLevel: 'Level 2 - Foundation',
+    requiredLevelNumber: 2,
+    description: 'Project tracking and issue management tool',
+    keywords: ['project management', 'tickets', 'sprints', 'tracking'],
+    estimatedHours: 10,
+    isRequired: true,
+    priority: 4,
+    primerTopics: ['What is Jira?', 'Creating issues', 'Sprints and boards', 'Jira workflows'],
+    recommendedPrimerType: 'quickstart',
+    masteryRecommendations: [
+      { provider: 'LinkedIn Learning', courseName: 'Jira Essential Training', duration: '2 hours', level: 'Beginner', searchUrl: '' },
+      { provider: 'Atlassian', courseName: 'Jira Administrator', duration: '15 hours', level: 'Intermediate', searchUrl: '' }
+    ]
+  },
+  figma: {
+    toolName: 'Figma',
+    category: 'Design Tool',
+    requiredLevel: 'Level 3 - Practitioner',
+    requiredLevelNumber: 3,
+    description: 'Collaborative interface design and prototyping tool',
+    keywords: ['UI design', 'prototyping', 'collaboration', 'wireframes'],
+    estimatedHours: 30,
+    isRequired: true,
+    priority: 1,
+    primerTopics: ['What is Figma?', 'Interface basics', 'Components and styles', 'Collaboration features'],
+    recommendedPrimerType: 'quickstart',
+    masteryRecommendations: [
+      { provider: 'Udemy', courseName: 'Figma UI UX Design Essentials', duration: '12 hours', level: 'Beginner', searchUrl: '' },
+      { provider: 'LinkedIn Learning', courseName: 'Figma Essential Training', duration: '3 hours', level: 'Beginner', searchUrl: '' }
+    ]
+  },
+  tableau: {
+    toolName: 'Tableau',
+    category: 'Data Tool',
+    requiredLevel: 'Level 3 - Practitioner',
+    requiredLevelNumber: 3,
+    description: 'Data visualization and business intelligence platform',
+    keywords: ['visualization', 'dashboards', 'analytics', 'BI'],
+    estimatedHours: 30,
+    isRequired: true,
+    priority: 2,
+    primerTopics: ['What is Tableau?', 'Connecting data sources', 'Creating visualizations', 'Dashboard basics'],
+    recommendedPrimerType: 'quickstart',
+    masteryRecommendations: [
+      { provider: 'Coursera', courseName: 'Tableau Fundamentals', duration: '15 hours', level: 'Beginner', searchUrl: '' },
+      { provider: 'Udemy', courseName: 'Tableau A-Z', duration: '9 hours', level: 'Beginner', searchUrl: '' }
+    ]
+  },
+  machinelearning: {
+    toolName: 'Machine Learning',
+    category: 'AI/ML Tool',
+    requiredLevel: 'Level 3 - Practitioner',
+    requiredLevelNumber: 3,
+    description: 'Building systems that learn from data to make predictions',
+    keywords: ['AI', 'algorithms', 'prediction', 'data science'],
+    estimatedHours: 60,
+    isRequired: true,
+    priority: 1,
+    primerTopics: ['What is Machine Learning?', 'Types of ML', 'Common algorithms', 'ML workflow'],
+    recommendedPrimerType: 'concept_primer',
+    masteryRecommendations: [
+      { provider: 'Coursera', courseName: 'Machine Learning by Andrew Ng', duration: '60 hours', level: 'Intermediate', searchUrl: '' },
+      { provider: 'Udemy', courseName: 'Machine Learning A-Z', duration: '44 hours', level: 'Beginner', searchUrl: '' }
+    ]
+  }
+};
+
+// Role pattern to tool mapping
+const ROLE_TOOL_PATTERNS: { pattern: RegExp; tools: string[] }[] = [
+  { pattern: /software\s*(engineer|developer)/i, tools: ['git', 'docker', 'agile', 'sql', 'javascript', 'react'] },
+  { pattern: /frontend|front-end|ui\s*developer/i, tools: ['javascript', 'react', 'git', 'figma', 'agile', 'communication'] },
+  { pattern: /backend|back-end|server/i, tools: ['git', 'docker', 'sql', 'python', 'aws', 'agile'] },
+  { pattern: /full\s*stack/i, tools: ['git', 'docker', 'javascript', 'react', 'sql', 'aws', 'agile'] },
+  { pattern: /devops|sre|platform/i, tools: ['docker', 'kubernetes', 'aws', 'git', 'python', 'agile'] },
+  { pattern: /data\s*(scientist|analyst)/i, tools: ['python', 'sql', 'excel', 'tableau', 'machinelearning', 'powerbi'] },
+  { pattern: /machine\s*learning|ml\s*engineer|ai/i, tools: ['python', 'machinelearning', 'sql', 'docker', 'git', 'aws'] },
+  { pattern: /product\s*(manager|owner)/i, tools: ['jira', 'agile', 'excel', 'communication', 'figma', 'powerbi'] },
+  { pattern: /project\s*manager/i, tools: ['jira', 'agile', 'excel', 'communication', 'powerbi', 'leadership'] },
+  { pattern: /ux|ui|designer/i, tools: ['figma', 'communication', 'agile', 'jira'] },
+  { pattern: /business\s*analyst/i, tools: ['excel', 'sql', 'powerbi', 'jira', 'communication', 'agile'] },
+  { pattern: /qa|quality|test/i, tools: ['git', 'jira', 'agile', 'sql', 'communication'] },
+  { pattern: /manager|lead|director/i, tools: ['leadership', 'communication', 'agile', 'jira', 'excel', 'powerbi'] },
+  { pattern: /architect/i, tools: ['aws', 'docker', 'kubernetes', 'git', 'agile', 'communication'] },
+  { pattern: /analyst/i, tools: ['excel', 'sql', 'powerbi', 'communication', 'agile'] },
+  { pattern: /consultant/i, tools: ['excel', 'powerbi', 'communication', 'agile', 'leadership'] },
+  { pattern: /admin|administrator/i, tools: ['excel', 'communication', 'jira'] },
+  { pattern: /engineer/i, tools: ['git', 'agile', 'communication', 'jira'] }, // Generic fallback for any engineer
 ];
 
 // ============================================
@@ -146,158 +543,236 @@ export const MASTER_TOOLS: Tool[] = [
 @Component({
   selector: 'app-tools-tab',
   standalone: true,
-  imports: [CommonModule, FormsModule, AddToolModalComponent],
+  imports: [CommonModule, FormsModule],
   templateUrl: './tools-tab.html',
-  styleUrls: ['./tools-tab.css']
+  styleUrl: './tools-tab.css'
 })
 export class ToolsTab implements OnInit {
-  @Input() selectedTenantId: string = '';
-  
-  @Output() courseSearch = new EventEmitter<{ tool: Tool, source: string }>();
-  @Output() generateCourse = new EventEmitter<Tool>();
-  
-  // Reference to Add Tool Modal
-  @ViewChild('addToolModal') addToolModal!: AddToolModalComponent;
-  
-  // Filter Data
+  // Data
+  tenants: any[] = [];
   sectorData: any[] = [];
   trackData: any[] = [];
+  roleData: any[] = [];
   filteredRoleData: any[] = [];
+  
+  // Selections
+  selectedTenantId: string = '';
   selectedSector: string = '';
   selectedTrack: string = '';
   selectedRole: string = '';
-  selectedRoleId: number = 0;
+  selectedRoleData: any = null;
   
-  // Data
-  masterTools: Tool[] = MASTER_TOOLS;
+  // Tools
   roleTools: RoleTool[] = [];
-  categories = TOOL_CATEGORIES;
-  levels = TOOL_LEVELS;
   
-  // Form State - Keep for backward compatibility
-  showAddForm: boolean = false;
-  editingRoleToolId: number | null = null;
-  selectedToolId: number | null = null;
-  searchTerm: string = '';
-  filteredMasterTools: Tool[] = [];
-  newTool: Partial<Tool> = {};
-  selectedLevel: string = 'Level 3';
-  isRequired: boolean = true;
-  newKeyword: string = '';
-  
-  // UI State
-  isLoading: boolean = false;
-  saveMessage: string = '';
-  
-  // AI Generation
+  // AI Suggestions
+  aiSuggestions: AIToolSuggestion[] = [];
+  showAISuggestions: boolean = false;
   isGeneratingAI: boolean = false;
   aiError: string = '';
-  showAISuggestions: boolean = false;
-  aiSuggestions: AIToolSuggestion[] = [];
   
-  // Course Linking
-  showLinkCourseModal: boolean = false;
-  linkingToolName: string = '';
-  availableCourses: any[] = [];
-  selectedCourseId: number | null = null;
-  isLoadingCourses: boolean = false;
-  toolCourses: Map<string, CourseForTool[]> = new Map();
+  // Form state
+  showAddForm: boolean = false;
+  editingTool: RoleTool | null = null;
   
-  // Video Studio
-  videoStudioUrl: string = 'https://video.flipick.com';
+  // Form fields
+  newToolName: string = '';
+  newToolCategory: string = '';
+  newToolLevel: number = 3;
+  newToolDescription: string = '';
+  newToolKeywords: string = '';
+  newToolHours: number = 20;
+  newToolIsRequired: boolean = true;
+  
+  // UI State
+  saveMessage: string = '';
+  isLoading: boolean = false;
+  viewMode: 'grid' | 'list' = 'grid';
+  
+  // Constants for template
+  toolCategories = TOOL_CATEGORIES;
+  toolLevels = TOOL_LEVELS;
+  primerTypes = PRIMER_TYPES;
+  masterySources = MASTERY_SOURCES;
   
   // Claude API Config
   private apiUrl: string;
   private apiKey: string;
   private model: string;
   
-  constructor(private skillService: SkillService) {
-    this.apiUrl = (environment as any).claudeApiUrl || 'https://api.anthropic.com/v1/messages';
-    this.apiKey = (environment as any).claudeApiKey || '';
-    this.model = (environment as any).claudeModel || 'claude-sonnet-4-20250514';
+  // Primers & Mastery Tracks per tool
+  toolPrimers: Map<string, Primer[]> = new Map();
+  toolMasteryTracks: Map<string, MasteryTrack[]> = new Map();
+  
+  // Primer Creation Modal
+  showPrimerModal: boolean = false;
+  primerToolName: string = '';
+  primerType: PrimerType = 'concept_primer';
+  primerTitle: string = '';
+  primerTopics: string = '';
+  isGeneratingPrimer: boolean = false;
+  primerProgress: number = 0;
+  primerStep: string = '';
+  
+  // Mastery Track Modal
+  showMasteryModal: boolean = false;
+  masteryToolName: string = '';
+  masteryTitle: string = '';
+  masterySource: MasterySource = 'linkedin_learning';
+  masteryUrl: string = '';
+  masteryDuration: number = 10;
+  masteryLevel: string = 'Intermediate';
+  masteryHasCert: boolean = false;
+  
+  // Generation Jobs
+  generationJobs: VideoStudioJob[] = [];
+
+  constructor(
+    private skillService: SkillService,
+    private tenantService: TenantService,
+    private cdr: ChangeDetectorRef
+  ) {
+    this.apiUrl = environment.claudeApiUrl || 'https://api.anthropic.com/v1/messages';
+    this.apiKey = environment.claudeApiKey || '';
+    this.model = environment.claudeModel || 'claude-sonnet-4-20250514';
   }
 
   ngOnInit(): void {
+    this.selectedTenantId = getTenantId() || '';
+    this.loadTenants();
     this.loadSectorData();
+    this.loadGenerationJobs();
   }
 
   // ============================================
   // DATA LOADING
   // ============================================
-  
-  loadSectorData(): void {
-    this.skillService.getSectorsTracksJobRoles(0, 0).subscribe({
+
+  loadTenants(): void {
+    this.tenantService.getTenants().subscribe({
       next: (res: any) => {
-        if (!res.isError && res.statusCode === 200 && res.result?.data) {
-          this.sectorData = res.result.data;
+        if (res.success && res.result) {
+          this.tenants = res.result;
+          console.log('Tenants loaded:', this.tenants.length);
+          this.cdr.detectChanges();
         }
       },
-      error: (err: any) => console.error('Error loading sector data:', err)
+      error: (err: any) => console.error('Error fetching tenants:', err)
     });
+  }
+
+  loadSectorData(): void {
+    this.isLoading = true;
+    
+    this.skillService.getSectorsTracksJobRoles(0, 0).subscribe({
+      next: (res: any) => {
+        this.isLoading = false;
+        const isSuccess = res.success === true || res.isError === false;
+        const hasData = res.result?.data || res.result;
+        
+        if (isSuccess && res.statusCode === 200 && hasData) {
+          this.sectorData = res.result.data || res.result;
+          if (!Array.isArray(this.sectorData)) {
+            this.sectorData = [];
+          }
+          console.log('Sectors loaded:', this.sectorData.length);
+          this.cdr.detectChanges();
+        } else {
+          this.sectorData = [];
+        }
+      },
+      error: (err: any) => {
+        console.error('Error loading sectors:', err);
+        this.sectorData = [];
+        this.isLoading = false;
+      }
+    });
+  }
+
+  loadGenerationJobs(): void {
+    const stored = localStorage.getItem('primerJobs');
+    if (stored) {
+      try {
+        this.generationJobs = JSON.parse(stored);
+      } catch (e) {
+        this.generationJobs = [];
+      }
+    }
+  }
+
+  saveGenerationJobs(): void {
+    localStorage.setItem('primerJobs', JSON.stringify(this.generationJobs));
   }
 
   // ============================================
   // FILTER HANDLERS
   // ============================================
-  
+
   onSectorChange(): void {
-    this.trackData = [];
-    this.filteredRoleData = [];
     this.selectedTrack = '';
     this.selectedRole = '';
+    this.selectedRoleData = null;
     this.roleTools = [];
+    this.trackData = [];
+    this.roleData = [];
+    this.filteredRoleData = [];
     this.aiSuggestions = [];
     this.showAISuggestions = false;
-    
+
     if (this.selectedSector) {
-      const sector = this.sectorData.find((s: any) => s.sectorName === this.selectedSector);
+      const sector = this.sectorData.find(s => s.sectorName === this.selectedSector);
       if (sector && sector.trackList) {
-        this.trackData = sector.trackList;
+        this.trackData = sector.trackList || [];
       }
     }
   }
 
   onTrackChange(): void {
-    this.filteredRoleData = [];
     this.selectedRole = '';
+    this.selectedRoleData = null;
     this.roleTools = [];
+    this.roleData = [];
+    this.filteredRoleData = [];
     this.aiSuggestions = [];
     this.showAISuggestions = false;
-    
+
     if (this.selectedTrack) {
-      const track = this.trackData.find((t: any) => t.trackName === this.selectedTrack);
+      const track = this.trackData.find(t => t.trackName === this.selectedTrack);
       if (track && track.jobRoleList) {
-        this.filteredRoleData = track.jobRoleList;
+        this.roleData = track.jobRoleList || [];
+        this.filteredRoleData = [...this.roleData];
       }
     }
   }
 
   selectRole(role: any): void {
-    this.selectedRole = role.jobRoleName;
-    this.selectedRoleId = role.jobRoleId;
+    this.selectedRole = role.jobRoleName || role.jobRole;
+    this.selectedRoleData = role;
     this.loadRoleTools();
   }
 
   clearSelectedRole(): void {
     this.selectedRole = '';
-    this.selectedRoleId = 0;
+    this.selectedRoleData = null;
     this.roleTools = [];
     this.aiSuggestions = [];
     this.showAISuggestions = false;
-    this.aiError = '';
   }
 
+  // ============================================
+  // TOOLS MANAGEMENT
+  // ============================================
+
   loadRoleTools(): void {
-    if (!this.selectedRole) {
-      this.roleTools = [];
-      return;
-    }
+    if (!this.selectedRole) return;
     
-    const storageKey = `roleTools_${this.selectedRole}`;
+    const storageKey = `roleTools_${this.selectedTenantId}_${this.selectedRole}`;
     const stored = localStorage.getItem(storageKey);
+    
     if (stored) {
       try {
         this.roleTools = JSON.parse(stored);
+        this.loadToolPrimersAndMasteryTracks();
       } catch (e) {
         this.roleTools = [];
       }
@@ -306,593 +781,647 @@ export class ToolsTab implements OnInit {
     }
   }
 
-  // ============================================
-  // ADD TOOL MODAL - NEW IMPLEMENTATION
-  // ============================================
-  
-  openAddToolModal(): void {
-    if (!this.selectedRole) {
-      alert('Please select a role first');
-      return;
-    }
-    this.addToolModal.open();
-  }
-
-  openEditToolModal(roleTool: RoleTool): void {
-    // Convert RoleTool to ModalRoleTool format and open for edit
-    const modalTool: ModalRoleTool = {
-      roleToolId: roleTool.roleToolId,
-      toolName: roleTool.tool.toolName,
-      toolCategory: roleTool.tool.category,
-      requiredLevel: roleTool.requiredLevel,
-      requiredLevelNumber: roleTool.requiredLevelNumber,
-      isRequired: roleTool.isRequired,
-      priority: roleTool.priority,
-      description: roleTool.tool.description,
-      keywords: roleTool.tool.keywords?.join(', ') || '',
-      estimatedHours: roleTool.tool.estimatedHours
-    };
-    this.addToolModal.openForEdit(modalTool);
-  }
-
-  onToolSaved(event: ToolSaveEvent): void {
-    console.log('Tool saved:', event);
-    
-    const { tool, courseOption } = event;
-    
-    // Check if tool already exists
-    const existingIndex = this.roleTools.findIndex(
-      rt => rt.tool.toolName.toLowerCase() === tool.toolName.toLowerCase()
-    );
-    
-    // Create Tool object
-    const toolObj: Tool = {
-      toolId: existingIndex >= 0 ? this.roleTools[existingIndex].tool.toolId : Date.now(),
-      toolName: tool.toolName,
-      category: tool.toolCategory,
-      level: tool.requiredLevel,
-      levelNumber: tool.requiredLevelNumber,
-      description: tool.description,
-      keywords: tool.keywords ? tool.keywords.split(',').map(k => k.trim()).filter(k => k) : [],
-      estimatedHours: tool.estimatedHours
-    };
-    
-    // Create or update RoleTool
-    const roleTool: RoleTool = {
-      roleToolId: tool.roleToolId || Date.now(),
-      roleId: this.selectedRoleId,
-      roleName: this.selectedRole,
-      toolId: toolObj.toolId,
-      tool: toolObj,
-      requiredLevel: tool.requiredLevel,
-      requiredLevelNumber: tool.requiredLevelNumber,
-      isRequired: tool.isRequired,
-      priority: tool.priority
-    };
-    
-    if (existingIndex >= 0) {
-      // Update existing
-      this.roleTools[existingIndex] = roleTool;
-    } else {
-      // Add new
-      this.roleTools.push(roleTool);
-    }
-    
-    // Save to localStorage
-    this.saveRoleToolsToStorage();
-    
-    // Handle course option
-    switch (courseOption) {
-      case 'external':
-        this.openExternalCourseLinker(toolObj);
-        break;
-      case 'upload':
-        this.openScormUploader(toolObj);
-        break;
-      case 'existing':
-        this.openLinkCourseModal(toolObj.toolName);
-        break;
-      case 'video-studio':
-        // Coming soon - just show message
-        this.saveMessage = `Tool "${tool.toolName}" saved. Video Studio integration coming soon!`;
-        setTimeout(() => this.saveMessage = '', 4000);
-        break;
-      default:
-        this.saveMessage = `Tool "${tool.toolName}" saved successfully`;
-        setTimeout(() => this.saveMessage = '', 3000);
-    }
-  }
-
-  onToolModalClosed(): void {
-    console.log('Tool modal closed');
-  }
-
-  private openExternalCourseLinker(tool: Tool): void {
-    // TODO: Implement external course linking
-    // For now, open LinkedIn Learning search
-    const searchQuery = encodeURIComponent(tool.toolName);
-    window.open(`https://www.linkedin.com/learning/search?keywords=${searchQuery}`, '_blank');
-    this.saveMessage = `Tool "${tool.toolName}" saved. Find courses on LinkedIn Learning.`;
-    setTimeout(() => this.saveMessage = '', 4000);
-  }
-
-  private openScormUploader(tool: Tool): void {
-    // TODO: Implement SCORM upload modal
-    this.saveMessage = `Tool "${tool.toolName}" saved. SCORM uploader coming soon.`;
-    setTimeout(() => this.saveMessage = '', 4000);
-  }
-
-  saveRoleToolsToStorage(): void {
-    const key = `roleTools_${this.selectedRole}`;
-    localStorage.setItem(key, JSON.stringify(this.roleTools));
-  }
-
-  // ============================================
-  // OLD FORM METHODS (Keep for compatibility)
-  // ============================================
-  
-  openAddForm(): void {
-    // Use new modal instead
-    this.openAddToolModal();
-  }
-
-  closeAddForm(): void {
-    this.showAddForm = false;
-    this.resetForm();
-  }
-
-  resetForm(): void {
-    this.editingRoleToolId = null;
-    this.selectedToolId = null;
-    this.searchTerm = '';
-    this.filteredMasterTools = [];
-    this.newTool = {};
-    this.selectedLevel = 'Level 3';
-    this.isRequired = true;
-    this.newKeyword = '';
-  }
-
-  searchTools(): void {
-    if (!this.searchTerm || this.searchTerm.length < 2) {
-      this.filteredMasterTools = [];
-      return;
-    }
-    
-    const term = this.searchTerm.toLowerCase();
-    this.filteredMasterTools = this.masterTools.filter(tool =>
-      tool.toolName.toLowerCase().includes(term) ||
-      tool.category.toLowerCase().includes(term) ||
-      tool.keywords?.some(kw => kw.toLowerCase().includes(term))
-    ).slice(0, 8);
-  }
-
-  selectTool(tool: Tool): void {
-    this.selectedToolId = tool.toolId;
-    this.newTool = { ...tool };
-    this.searchTerm = '';
-    this.filteredMasterTools = [];
-  }
-
-  addKeyword(): void {
-    if (!this.newKeyword?.trim()) return;
-    
-    if (!this.newTool.keywords) {
-      this.newTool.keywords = [];
-    }
-    
-    if (!this.newTool.keywords.includes(this.newKeyword.trim().toLowerCase())) {
-      this.newTool.keywords.push(this.newKeyword.trim().toLowerCase());
-    }
-    
-    this.newKeyword = '';
-  }
-
-  removeKeyword(index: number): void {
-    this.newTool.keywords?.splice(index, 1);
-  }
-
-  saveTool(): void {
-    // Delegate to new modal if open, otherwise use legacy save
-    if (!this.newTool.toolName && !this.selectedToolId) return;
-    
-    this.isLoading = true;
-    
-    const tool: Tool = this.selectedToolId
-      ? this.masterTools.find(t => t.toolId === this.selectedToolId)!
-      : {
-          toolId: Date.now(),
-          toolName: this.newTool.toolName || '',
-          category: this.newTool.category || '',
-          level: this.selectedLevel,
-          levelNumber: this.getLevelNumber(this.selectedLevel),
-          description: this.newTool.description || '',
-          keywords: this.newTool.keywords || [],
-          estimatedHours: this.newTool.estimatedHours || 40
-        };
-    
-    const roleTool: RoleTool = {
-      roleToolId: this.editingRoleToolId || Date.now(),
-      roleId: this.selectedRoleId,
-      roleName: this.selectedRole,
-      toolId: tool.toolId,
-      tool: tool,
-      requiredLevel: this.selectedLevel,
-      requiredLevelNumber: this.getLevelNumber(this.selectedLevel),
-      isRequired: this.isRequired,
-      priority: 1
-    };
-    
-    // Simulate API delay
-    setTimeout(() => {
-      if (this.editingRoleToolId) {
-        const index = this.roleTools.findIndex(rt => rt.roleToolId === this.editingRoleToolId);
-        if (index >= 0) {
-          this.roleTools[index] = roleTool;
-        }
-      } else {
-        // Check if already exists
-        const existingIndex = this.roleTools.findIndex(
-          rt => rt.tool.toolName.toLowerCase() === tool.toolName.toLowerCase()
-        );
-        if (existingIndex >= 0) {
-          this.roleTools[existingIndex] = roleTool;
-        } else {
-          this.roleTools.push(roleTool);
-        }
-      }
-      
-      this.saveRoleToolsToStorage();
-      
-      this.isLoading = false;
-      this.saveMessage = `Tool "${tool.toolName}" ${this.editingRoleToolId ? 'updated' : 'added'} successfully`;
-      setTimeout(() => this.saveMessage = '', 3000);
-      
-      this.closeAddForm();
-    }, 500);
-  }
-
-  // ============================================
-  // TOOL ACTIONS
-  // ============================================
-  
-  editRoleTool(roleTool: RoleTool): void {
-    this.openEditToolModal(roleTool);
-  }
-
-  deleteTool(roleTool: RoleTool): void {
-    if (confirm(`Remove "${roleTool.tool.toolName}" from this role?`)) {
-      this.roleTools = this.roleTools.filter(rt => rt.roleToolId !== roleTool.roleToolId);
-      this.saveRoleToolsToStorage();
-      this.saveMessage = 'Tool removed successfully!';
-      setTimeout(() => this.saveMessage = '', 3000);
-    }
-  }
-  
-  searchLinkedIn(tool: Tool): void {
-    const query = tool.linkedInSearchQuery || tool.toolName;
-    window.open(`https://www.linkedin.com/learning/search?keywords=${encodeURIComponent(query)}`, '_blank');
-  }
-  
-  searchCoursera(tool: Tool): void {
-    const query = tool.courseraSearchQuery || tool.toolName;
-    window.open(`https://www.coursera.org/search?query=${encodeURIComponent(query)}`, '_blank');
-  }
-  
-  onGenerateCourse(tool: Tool): void {
-    this.generateCourse.emit(tool);
-    alert(`AI Course Generation for "${tool.toolName}" coming soon!`);
-  }
-
-  // ============================================
-  // AI GENERATION
-  // ============================================
-  
-  generateToolsWithAI(): void {
+  saveRoleTools(): void {
     if (!this.selectedRole) return;
     
-    this.isGeneratingAI = true;
-    this.aiError = '';
+    const storageKey = `roleTools_${this.selectedTenantId}_${this.selectedRole}`;
+    localStorage.setItem(storageKey, JSON.stringify(this.roleTools));
     
-    // Simulate AI generation
-    setTimeout(() => {
-      this.aiSuggestions = this.getMockAISuggestions();
-      this.showAISuggestions = true;
-      this.isGeneratingAI = false;
-    }, 2000);
-    
-    // TODO: Replace with actual API call
-    // this.skillService.generateToolsForRole(this.selectedRole).subscribe({
-    //   next: (res) => {
-    //     this.aiSuggestions = res.result || [];
-    //     this.showAISuggestions = true;
-    //     this.isGeneratingAI = false;
-    //   },
-    //   error: (err) => {
-    //     this.aiError = 'Failed to generate suggestions. Please try again.';
-    //     this.isGeneratingAI = false;
-    //   }
-    // });
+    this.saveMessage = '✓ Tools saved';
+    setTimeout(() => this.saveMessage = '', 2000);
   }
 
-  getMockAISuggestions(): AIToolSuggestion[] {
-    const roleLower = this.selectedRole.toLowerCase();
-    
-    if (roleLower.includes('frontend') || roleLower.includes('ui')) {
-      return [
-        {
-          toolName: 'React', category: 'Frontend Framework', requiredLevel: 'Level 4', requiredLevelNumber: 4,
-          description: 'Modern JavaScript library for building user interfaces', keywords: ['react', 'jsx', 'hooks'],
-          estimatedHours: 50, isRequired: true, priority: 1,
-          suggestedCourses: [
-            { courseName: 'React Fundamentals', level: 'Level 2-3', estimatedHours: 20, description: 'Core React concepts', learningObjectives: ['Components', 'Props', 'State'] },
-            { courseName: 'Advanced React Patterns', level: 'Level 4', estimatedHours: 15, description: 'Advanced patterns', learningObjectives: ['Hooks', 'Context', 'Performance'] }
-          ]
-        },
-        {
-          toolName: 'TypeScript', category: 'Programming Language', requiredLevel: 'Level 3', requiredLevelNumber: 3,
-          description: 'Typed superset of JavaScript', keywords: ['typescript', 'types', 'interfaces'],
-          estimatedHours: 30, isRequired: true, priority: 2, suggestedCourses: []
-        }
-      ];
-    }
-    
-    // Default suggestions
-    return [
-      {
-        toolName: 'Git', category: 'Version Control', requiredLevel: 'Level 3', requiredLevelNumber: 3,
-        description: 'Distributed version control system', keywords: ['git', 'github', 'version control'],
-        estimatedHours: 15, isRequired: true, priority: 1, suggestedCourses: []
-      },
-      {
-        toolName: 'Agile & Scrum', category: 'Methodology', requiredLevel: 'Level 3', requiredLevelNumber: 3,
-        description: 'Agile project management', keywords: ['agile', 'scrum', 'kanban'],
-        estimatedHours: 20, isRequired: false, priority: 2, suggestedCourses: []
+  loadToolPrimersAndMasteryTracks(): void {
+    this.roleTools.forEach(rt => {
+      const toolName = rt.tool.toolName;
+      
+      // Load primers
+      const primersKey = `primers_${toolName}`;
+      const storedPrimers = localStorage.getItem(primersKey);
+      if (storedPrimers) {
+        this.toolPrimers.set(toolName, JSON.parse(storedPrimers));
       }
-    ];
-  }
-
-  addSuggestedTool(suggestion: AIToolSuggestion): void {
-    const tool: Tool = {
-      toolId: Date.now(),
-      toolName: suggestion.toolName,
-      category: suggestion.category,
-      level: suggestion.requiredLevel,
-      levelNumber: suggestion.requiredLevelNumber,
-      description: suggestion.description,
-      keywords: suggestion.keywords,
-      estimatedHours: suggestion.estimatedHours
-    };
-    
-    const roleTool: RoleTool = {
-      roleToolId: Date.now(),
-      roleId: this.selectedRoleId,
-      roleName: this.selectedRole,
-      toolId: tool.toolId,
-      tool: tool,
-      requiredLevel: suggestion.requiredLevel,
-      requiredLevelNumber: suggestion.requiredLevelNumber,
-      isRequired: suggestion.isRequired,
-      priority: suggestion.priority,
-      suggestedCourses: suggestion.suggestedCourses
-    };
-    
-    // Check if exists
-    const existing = this.roleTools.find(rt => rt.tool.toolName.toLowerCase() === tool.toolName.toLowerCase());
-    if (!existing) {
-      this.roleTools.push(roleTool);
-      this.saveRoleToolsToStorage();
-    }
-    
-    // Remove from suggestions
-    this.aiSuggestions = this.aiSuggestions.filter(s => s.toolName !== suggestion.toolName);
-    
-    this.saveMessage = `Added "${tool.toolName}" to ${this.selectedRole}`;
-    setTimeout(() => this.saveMessage = '', 3000);
-    
-    if (this.aiSuggestions.length === 0) {
-      this.closeAISuggestions();
-    }
-  }
-
-  addAllSuggestions(): void {
-    this.aiSuggestions.forEach(suggestion => {
-      const existing = this.roleTools.find(rt => rt.tool.toolName.toLowerCase() === suggestion.toolName.toLowerCase());
-      if (!existing) {
-        const tool: Tool = {
-          toolId: Date.now() + Math.random(),
-          toolName: suggestion.toolName,
-          category: suggestion.category,
-          level: suggestion.requiredLevel,
-          levelNumber: suggestion.requiredLevelNumber,
-          description: suggestion.description,
-          keywords: suggestion.keywords,
-          estimatedHours: suggestion.estimatedHours
-        };
-        
-        this.roleTools.push({
-          roleToolId: Date.now() + Math.random(),
-          roleId: this.selectedRoleId,
-          roleName: this.selectedRole,
-          toolId: tool.toolId,
-          tool: tool,
-          requiredLevel: suggestion.requiredLevel,
-          requiredLevelNumber: suggestion.requiredLevelNumber,
-          isRequired: suggestion.isRequired,
-          priority: suggestion.priority,
-          suggestedCourses: suggestion.suggestedCourses
-        });
+      
+      // Load mastery tracks
+      const masteryKey = `mastery_${toolName}`;
+      const storedMastery = localStorage.getItem(masteryKey);
+      if (storedMastery) {
+        this.toolMasteryTracks.set(toolName, JSON.parse(storedMastery));
       }
     });
-    
-    this.saveRoleToolsToStorage();
-    
-    this.saveMessage = `Added ${this.aiSuggestions.length} tools to ${this.selectedRole}`;
-    setTimeout(() => this.saveMessage = '', 3000);
-    
-    this.closeAISuggestions();
-  }
-
-  closeAISuggestions(): void {
-    this.showAISuggestions = false;
-    this.aiSuggestions = [];
   }
 
   // ============================================
-  // HELPERS
+  // HELPER METHODS
   // ============================================
-  
-  getCategoryIcon(category: string): string {
-    const icons: Record<string, string> = {
-      'Programming Language': '💻',
-      'Frontend Framework': '🎨',
-      'Backend Framework': '⚙️',
-      'Database': '🗄️',
-      'Cloud Platform': '☁️',
-      'DevOps Tool': '🔧',
-      'Version Control': '📝',
-      'Methodology': '📊',
-      'Soft Skill': '🤝',
-      'Certification': '📜',
-      'Design Tool': '🖌️',
-      'Project Management': '📋',
-      'Testing Tool': '🧪',
-      'AI/ML Tool': '🤖'
-    };
-    return icons[category] || '🔧';
-  }
-
-  getLevelClass(level: string): string {
-    const levelNum = parseInt(level.replace(/\D/g, '')) || 3;
-    if (levelNum <= 2) return 'level-beginner';
-    if (levelNum === 3) return 'level-intermediate';
-    return 'level-advanced';
-  }
-
-  getLevelNumber(level: string): number {
-    const levelObj = this.levels.find(l => l.value === level);
-    return levelObj?.number || 3;
-  }
 
   getRequiredCount(): number {
     return this.roleTools.filter(rt => rt.isRequired).length;
   }
 
   getTotalHours(): number {
-    return this.roleTools.reduce((sum, rt) => sum + (rt.tool.estimatedHours || 0), 0);
+    return this.roleTools.reduce((sum, rt) => sum + rt.tool.estimatedHours, 0);
   }
 
-  getCoursesForTool(toolName: string): CourseForTool[] {
-    return this.toolCourses.get(toolName) || [];
+  getPrimersForTool(toolName: string): Primer[] {
+    return this.toolPrimers.get(toolName) || [];
   }
 
-  getCourseCount(toolName: string): number {
-    return this.getCoursesForTool(toolName).length;
+  getMasteryTracksForTool(toolName: string): MasteryTrack[] {
+    return this.toolMasteryTracks.get(toolName) || [];
+  }
+
+  getPrimerCount(toolName: string): number {
+    return this.getPrimersForTool(toolName).length;
+  }
+
+  getMasteryCount(toolName: string): number {
+    return this.getMasteryTracksForTool(toolName).length;
+  }
+
+  getLevelClass(level: number): string {
+  return `level-${level}`;
+}
+
+  getPrimerTypeConfig(type: PrimerType): PrimerTypeConfig {
+    return PRIMER_TYPES.find(p => p.type === type) || PRIMER_TYPES[0];
+  }
+
+  getMasterySourceConfig(source: MasterySource) {
+    return MASTERY_SOURCES.find(s => s.value === source) || MASTERY_SOURCES[0];
+  }
+
+  // Check if tools exist for a role (before selection)
+  hasToolsForRole(role: any): boolean {
+    const roleName = role.jobRoleName || role.jobRole;
+    const storageKey = `roleTools_${this.selectedTenantId}_${roleName}`;
+    const stored = localStorage.getItem(storageKey);
+    if (stored) {
+      try {
+        const tools = JSON.parse(stored);
+        return Array.isArray(tools) && tools.length > 0;
+      } catch (e) {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  // Get tool count for a role (before selection)
+  getToolCountForRole(role: any): number {
+    const roleName = role.jobRoleName || role.jobRole;
+    const storageKey = `roleTools_${this.selectedTenantId}_${roleName}`;
+    const stored = localStorage.getItem(storageKey);
+    if (stored) {
+      try {
+        const tools = JSON.parse(stored);
+        return Array.isArray(tools) ? tools.length : 0;
+      } catch (e) {
+        return 0;
+      }
+    }
+    return 0;
+  }
+getCategorySlug(category: string): string {
+  if (!category) return 'default';
+  return category.toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+getCategoryIcon(category: string): string {
+  const icons: { [key: string]: string } = {
+    'programming language': '💻',
+    'frontend framework': '🎨',
+    'database': '🗄️',
+    'cloud platform': '☁️',
+    'devops': '🔧',
+    'methodology': '📋',
+    'soft skill': '🤝',
+  };
+  const lower = (category || '').toLowerCase();
+  for (const [key, icon] of Object.entries(icons)) {
+    if (lower.includes(key)) return icon;
+  }
+  return '🛠️';
+}
+
+getToolCompletionPercent(roleTool: RoleTool): number {
+  const toolName = roleTool.tool.toolName;
+  let score = 0;
+  if (this.getPrimerCount(toolName) > 0) score += 40;
+  if (this.getMasteryCount(toolName) > 0) score += 60;
+  return score;
+}
+
+getTotalPrimers(): number {
+  return this.roleTools.reduce((sum, rt) => 
+    sum + this.getPrimerCount(rt.tool.toolName), 0);
+}
+
+toggleResourceExpand(roleTool: RoleTool, section: string): void {
+  // Placeholder for expandable sections
+}
+
+  // ============================================
+  // AI TOOL GENERATION (HYBRID APPROACH)
+  // ============================================
+
+  async generateToolsWithAI(): Promise<void> {
+    if (!this.selectedRole || !this.selectedRoleData) {
+      this.aiError = 'Please select a role first';
+      return;
+    }
+
+    this.isGeneratingAI = true;
+    this.aiError = '';
+    this.aiSuggestions = [];
+
+    // Check if API key is configured
+    const hasApiKey = this.apiKey && this.apiKey.length > 10 && this.apiKey.startsWith('sk-');
+    
+    if (hasApiKey) {
+      // Try Claude API first
+      try {
+        const prompt = this.buildAIPrompt();
+        const response = await fetch(this.apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': this.apiKey,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true'
+          },
+          body: JSON.stringify({
+            model: this.model,
+            max_tokens: 4096,
+            messages: [{ role: 'user', content: prompt }]
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const content = data.content[0].text;
+        
+        this.parseAISuggestions(content);
+        this.showAISuggestions = true;
+        console.log('Tools generated via Claude API');
+      } catch (error: any) {
+        console.log('Claude API unavailable, using Smart Defaults:', error.message);
+        // Silently fall back to Smart Defaults
+        this.loadSmartDefaults();
+      }
+    } else {
+      // No API key configured, use Smart Defaults directly
+      console.log('No API key configured, using Smart Defaults');
+      this.loadSmartDefaults();
+    }
+
+    this.isGeneratingAI = false;
+    this.cdr.detectChanges();
+  }
+
+  // Smart Defaults: Pattern-based tool suggestions
+  private loadSmartDefaults(): void {
+    const roleName = this.selectedRole.toLowerCase();
+    const roleDesc = (this.selectedRoleData?.jobRoleDescription || '').toLowerCase();
+    const searchText = `${roleName} ${roleDesc}`;
+    
+    // Find matching pattern
+    let matchedTools: string[] = [];
+    
+    for (const { pattern, tools } of ROLE_TOOL_PATTERNS) {
+      if (pattern.test(searchText)) {
+        matchedTools = tools;
+        break;
+      }
+    }
+    
+    // If no pattern matched, provide generic tools
+    if (matchedTools.length === 0) {
+      matchedTools = ['communication', 'excel', 'agile', 'jira'];
+    }
+    
+    // Build suggestions from matched tools
+    this.aiSuggestions = matchedTools
+      .map(toolKey => COMMON_TOOLS[toolKey])
+      .filter(tool => tool !== undefined)
+      .map((tool, index) => ({
+        ...tool,
+        priority: index + 1
+      }));
+    
+    this.showAISuggestions = true;
+    console.log(`Smart Defaults: ${this.aiSuggestions.length} tools for "${this.selectedRole}"`);
+  }
+
+  private buildAIPrompt(): string {
+    const roleDesc = this.selectedRoleData?.jobRoleDescription || this.selectedRole;
+    
+    return `You are an expert in workforce skills and learning design. Generate tool/technology suggestions for a job role.
+
+ROLE: ${this.selectedRole}
+DESCRIPTION: ${roleDesc}
+SECTOR: ${this.selectedSector}
+TRACK: ${this.selectedTrack}
+
+Generate 6-10 tools/technologies for this role. For each tool, provide:
+
+1. Tool name
+2. Category (Programming Language, Framework, Cloud Platform, DevOps Tool, Soft Skill, etc.)
+3. Required proficiency level (1-5)
+4. Description (1-2 sentences)
+5. Keywords (3-5 relevant terms)
+6. Estimated mastery hours (10-100 hours for full proficiency)
+7. Is required (true/false)
+8. Priority (1-10)
+9. Primer topics (3-5 topics for a 10-minute introductory video)
+10. Recommended primer type (concept_primer, quickstart, key_concepts, best_practices, use_cases)
+11. Mastery recommendations (2-3 external course suggestions with provider and estimated duration)
+
+Return as JSON array:
+[
+  {
+    "toolName": "Docker",
+    "category": "DevOps Tool",
+    "requiredLevel": "Level 3 - Practitioner",
+    "requiredLevelNumber": 3,
+    "description": "Container platform for building and deploying applications",
+    "keywords": ["containers", "devops", "deployment", "microservices"],
+    "estimatedHours": 30,
+    "isRequired": true,
+    "priority": 1,
+    "primerTopics": ["What are containers?", "Docker vs VMs", "Basic Docker commands", "When to use Docker"],
+    "recommendedPrimerType": "concept_primer",
+    "masteryRecommendations": [
+      {"provider": "LinkedIn Learning", "courseName": "Learning Docker", "duration": "2 hours", "level": "Beginner"},
+      {"provider": "Coursera", "courseName": "Docker for Developers", "duration": "15 hours", "level": "Intermediate"},
+      {"provider": "Udemy", "courseName": "Docker & Kubernetes Complete Guide", "duration": "22 hours", "level": "Advanced"}
+    ]
+  }
+]
+
+Return ONLY the JSON array, no markdown or explanation.`;
+  }
+
+  private parseAISuggestions(content: string): void {
+    try {
+      let jsonStr = content.trim();
+      if (jsonStr.startsWith('```')) {
+        jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```/g, '');
+      }
+      
+      const suggestions = JSON.parse(jsonStr);
+      
+      if (Array.isArray(suggestions)) {
+        this.aiSuggestions = suggestions.map(s => ({
+          toolName: s.toolName || 'Unknown Tool',
+          category: s.category || 'Other',
+          requiredLevel: s.requiredLevel || 'Level 3 - Practitioner',
+          requiredLevelNumber: s.requiredLevelNumber || 3,
+          description: s.description || '',
+          keywords: s.keywords || [],
+          estimatedHours: s.estimatedHours || 20,
+          isRequired: s.isRequired ?? true,
+          priority: s.priority || 5,
+          primerTopics: s.primerTopics || [],
+          recommendedPrimerType: s.recommendedPrimerType || 'concept_primer',
+          masteryRecommendations: s.masteryRecommendations || []
+        }));
+      }
+    } catch (e) {
+      console.error('Error parsing AI response, using Smart Defaults:', e);
+      this.loadSmartDefaults();
+    }
   }
 
   // ============================================
-  // COURSE LINKING
+  // ADD TOOLS FROM SUGGESTIONS
   // ============================================
-  
-  openLinkCourseModal(toolName: string): void {
-    this.linkingToolName = toolName;
-    this.showLinkCourseModal = true;
-    this.selectedCourseId = null;
-    this.loadAvailableCourses();
-  }
-  
-  closeLinkCourseModal(): void {
-    this.showLinkCourseModal = false;
-    this.linkingToolName = '';
-    this.availableCourses = [];
-  }
-  
-  loadAvailableCourses(): void {
-    this.isLoadingCourses = true;
+
+  addSuggestedTool(suggestion: AIToolSuggestion): void {
+    const newTool: RoleTool = {
+      roleToolId: Date.now(),
+      roleId: 0,
+      roleName: this.selectedRole,
+      toolId: Date.now(),
+      tool: {
+        toolId: Date.now(),
+        toolName: suggestion.toolName,
+        category: suggestion.category,
+        level: suggestion.requiredLevel,
+        levelNumber: suggestion.requiredLevelNumber,
+        description: suggestion.description,
+        keywords: suggestion.keywords,
+        estimatedHours: suggestion.estimatedHours
+      },
+      requiredLevel: suggestion.requiredLevel,
+      requiredLevelNumber: suggestion.requiredLevelNumber,
+      isRequired: suggestion.isRequired,
+      priority: suggestion.priority
+    };
+
+    this.roleTools.push(newTool);
+    this.aiSuggestions = this.aiSuggestions.filter(s => s.toolName !== suggestion.toolName);
     
-    // TODO: Replace with actual API call
-    setTimeout(() => {
-      this.availableCourses = [
-        { courseId: 1, courseName: 'Introduction to Programming', courseType: 'SCORM', duration: '10 hours' },
-        { courseId: 2, courseName: 'Web Development Basics', courseType: 'SCORM', duration: '15 hours' },
-        { courseId: 3, courseName: 'Advanced Concepts', courseType: 'PDF', duration: '8 hours' },
-      ];
-      this.isLoadingCourses = false;
-    }, 500);
+    if (this.aiSuggestions.length === 0) {
+      this.showAISuggestions = false;
+    }
+    
+    this.saveRoleTools();
   }
-  
-  linkCourseToTool(): void {
-    if (!this.selectedCourseId || !this.linkingToolName) return;
+
+  addAllSuggestions(): void {
+    this.aiSuggestions.forEach(s => this.addSuggestedTool(s));
+  }
+
+  dismissAISuggestions(): void {
+    this.aiSuggestions = [];
+    this.showAISuggestions = false;
+  }
+
+  // ============================================
+  // PRIMER MODAL
+  // ============================================
+
+  openPrimerModal(toolName: string, suggestion?: AIToolSuggestion): void {
+    this.primerToolName = toolName;
+    this.primerType = suggestion?.recommendedPrimerType || 'concept_primer';
+    this.primerTitle = `${toolName} Primer`;
+    this.primerTopics = suggestion?.primerTopics?.join('\n') || '';
+    this.showPrimerModal = true;
+  }
+
+  closePrimerModal(): void {
+    this.showPrimerModal = false;
+    this.isGeneratingPrimer = false;
+    this.primerProgress = 0;
+    this.primerStep = '';
+  }
+
+  getPrimerTypeLabel(type: PrimerType): string {
+    return PRIMER_TYPES.find(p => p.type === type)?.label || type;
+  }
+
+  async generatePrimer(): Promise<void> {
+    if (!this.primerTitle || !this.primerTopics) return;
+
+    this.isGeneratingPrimer = true;
+    this.primerProgress = 0;
+    this.primerStep = 'Initializing...';
+
+    const config = this.getPrimerTypeConfig(this.primerType);
     
-    const selectedCourse = this.availableCourses.find(c => c.courseId === this.selectedCourseId);
-    if (!selectedCourse) return;
-    
-    const courseForTool: CourseForTool = {
-      courseId: selectedCourse.courseId,
-      courseName: selectedCourse.courseName,
-      courseType: selectedCourse.courseType,
-      duration: selectedCourse.duration,
-      requiredLevel: 'Level 3',
-      isPrimary: this.getCourseCount(this.linkingToolName) === 0,
-      thumbnailUrl: '',
-      status: 'Active'
+    // Create job
+    const job: VideoStudioJob = {
+      jobId: `primer_${Date.now()}`,
+      toolName: this.primerToolName,
+      primerTitle: this.primerTitle,
+      primerType: this.primerType,
+      status: 'processing',
+      progress: 0,
+      currentStep: 'Starting generation...',
+      createdAt: new Date()
     };
     
-    const existing = this.toolCourses.get(this.linkingToolName) || [];
-    existing.push(courseForTool);
-    this.toolCourses.set(this.linkingToolName, existing);
-    
-    const storageKey = `toolCourses_${this.linkingToolName}`;
-    localStorage.setItem(storageKey, JSON.stringify(existing));
-    
-    this.saveMessage = `Linked "${selectedCourse.courseName}" to ${this.linkingToolName}`;
-    setTimeout(() => this.saveMessage = '', 3000);
-    
-    this.closeLinkCourseModal();
-  }
-  
-  unlinkCourse(toolName: string, courseId: number): void {
-    if (!confirm('Remove this course from the tool?')) return;
-    
-    const existing = this.toolCourses.get(toolName) || [];
-    const filtered = existing.filter(c => c.courseId !== courseId);
-    this.toolCourses.set(toolName, filtered);
-    
-    const storageKey = `toolCourses_${toolName}`;
-    localStorage.setItem(storageKey, JSON.stringify(filtered));
-    
-    this.saveMessage = 'Course unlinked successfully';
-    setTimeout(() => this.saveMessage = '', 3000);
-  }
-  
-  // ============================================
-  // VIDEO STUDIO LTI LAUNCH
-  // ============================================
-  
-  launchVideoStudio(tool: Tool): void {
-    const launchParams: LTILaunchParams = {
-      tenantId: parseInt(this.selectedTenantId) || 0,
-      userId: 0,
-      toolName: tool.toolName,
-      toolCategory: tool.category,
-      requiredLevel: tool.level,
-      keywords: tool.keywords?.join(',') || '',
-      estimatedHours: tool.estimatedHours || 40
+    this.generationJobs.unshift(job);
+    this.saveGenerationJobs();
+
+    // Simulate generation (replace with actual Video Studio API)
+    const steps = [
+      { progress: 10, step: 'Analyzing content...' },
+      { progress: 25, step: 'Generating script...' },
+      { progress: 45, step: 'Creating scenes...' },
+      { progress: 65, step: 'Generating visuals...' },
+      { progress: 80, step: 'Adding narration...' },
+      { progress: 95, step: 'Finalizing...' },
+      { progress: 100, step: 'Complete!' }
+    ];
+
+    for (const step of steps) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      this.primerProgress = step.progress;
+      this.primerStep = step.step;
+      job.progress = step.progress;
+      job.currentStep = step.step;
+      this.cdr.detectChanges();
+    }
+
+    // Create primer record
+    const newPrimer: Primer = {
+      primerId: Date.now(),
+      toolName: this.primerToolName,
+      title: this.primerTitle,
+      type: this.primerType,
+      duration: config.duration.default,
+      status: 'ready',
+      videoStudioJobId: job.jobId,
+      createdAt: new Date()
     };
-    
-    const params = new URLSearchParams({
-      tool_name: launchParams.toolName,
-      tool_category: launchParams.toolCategory,
-      required_level: launchParams.requiredLevel,
-      keywords: launchParams.keywords,
-      estimated_hours: launchParams.estimatedHours.toString(),
-      return_url: window.location.href
-    });
-    
-    const launchUrl = `${this.videoStudioUrl}/create?${params.toString()}`;
-    window.open(launchUrl, '_blank', 'width=1200,height=800');
+
+    // Save primer
+    const existing = this.toolPrimers.get(this.primerToolName) || [];
+    existing.push(newPrimer);
+    this.toolPrimers.set(this.primerToolName, existing);
+    localStorage.setItem(`primers_${this.primerToolName}`, JSON.stringify(existing));
+
+    job.status = 'completed';
+    this.saveGenerationJobs();
+
+    this.closePrimerModal();
+    this.saveMessage = '✓ Primer created successfully!';
+    setTimeout(() => this.saveMessage = '', 3000);
   }
-  
-  viewCourse(courseId: number): void {
-    window.open(`/courses/${courseId}`, '_blank');
+
+  // ============================================
+  // MASTERY TRACK MODAL
+  // ============================================
+
+  openMasteryModal(toolName: string, recommendation?: MasteryRecommendation): void {
+    this.masteryToolName = toolName;
+    this.masteryTitle = recommendation?.courseName || '';
+    this.masterySource = this.getSourceFromProvider(recommendation?.provider || '');
+    this.masteryDuration = parseInt(recommendation?.duration || '10') || 10;
+    this.masteryLevel = recommendation?.level || 'Intermediate';
+    this.masteryUrl = '';
+    this.masteryHasCert = false;
+    this.showMasteryModal = true;
+  }
+
+  closeMasteryModal(): void {
+    this.showMasteryModal = false;
+  }
+
+  getSourceFromProvider(provider: string): MasterySource {
+    const lower = provider.toLowerCase();
+    if (lower.includes('linkedin')) return 'linkedin_learning';
+    if (lower.includes('coursera')) return 'coursera';
+    if (lower.includes('udemy')) return 'udemy';
+    if (lower.includes('pluralsight')) return 'pluralsight';
+    if (lower.includes('internal')) return 'internal';
+    return 'other';
+  }
+
+  addMasteryTrack(): void {
+    if (!this.masteryTitle) return;
+
+    const newTrack: MasteryTrack = {
+      trackId: Date.now(),
+      toolName: this.masteryToolName,
+      title: this.masteryTitle,
+      source: this.masterySource,
+      sourceUrl: this.masteryUrl,
+      duration: this.masteryDuration,
+      level: this.masteryLevel,
+      hasCertification: this.masteryHasCert,
+      provider: MASTERY_SOURCES.find(s => s.value === this.masterySource)?.label || '',
+      addedAt: new Date()
+    };
+
+    const existing = this.toolMasteryTracks.get(this.masteryToolName) || [];
+    existing.push(newTrack);
+    this.toolMasteryTracks.set(this.masteryToolName, existing);
+    localStorage.setItem(`mastery_${this.masteryToolName}`, JSON.stringify(existing));
+
+    this.closeMasteryModal();
+    this.saveMessage = '✓ Mastery track added!';
+    setTimeout(() => this.saveMessage = '', 2000);
+  }
+
+  searchMasteryCourse(source: MasterySource, toolName: string): void {
+    const config = MASTERY_SOURCES.find(s => s.value === source);
+    if (config?.searchUrl) {
+      window.open(config.searchUrl + encodeURIComponent(toolName), '_blank');
+    }
+  }
+
+  // ============================================
+  // REMOVE ITEMS
+  // ============================================
+
+  removePrimer(toolName: string, primerId: number): void {
+    const primers = this.toolPrimers.get(toolName) || [];
+    const filtered = primers.filter(p => p.primerId !== primerId);
+    this.toolPrimers.set(toolName, filtered);
+    localStorage.setItem(`primers_${toolName}`, JSON.stringify(filtered));
+    this.saveMessage = '✓ Primer removed';
+    setTimeout(() => this.saveMessage = '', 2000);
+  }
+
+  removeMasteryTrack(toolName: string, trackId: number): void {
+    const tracks = this.toolMasteryTracks.get(toolName) || [];
+    const filtered = tracks.filter(t => t.trackId !== trackId);
+    this.toolMasteryTracks.set(toolName, filtered);
+    localStorage.setItem(`mastery_${toolName}`, JSON.stringify(filtered));
+    this.saveMessage = '✓ Mastery track removed';
+    setTimeout(() => this.saveMessage = '', 2000);
+  }
+
+  removeTool(roleTool: RoleTool): void {
+    if (confirm(`Remove "${roleTool.tool.toolName}" from this role?`)) {
+      this.roleTools = this.roleTools.filter(rt => rt.roleToolId !== roleTool.roleToolId);
+      this.saveRoleTools();
+    }
+  }
+
+  // ============================================
+  // ADD/EDIT TOOL FORM
+  // ============================================
+
+  openAddForm(): void {
+    this.editingTool = null;
+    this.newToolName = '';
+    this.newToolCategory = '';
+    this.newToolLevel = 3;
+    this.newToolDescription = '';
+    this.newToolKeywords = '';
+    this.newToolHours = 20;
+    this.newToolIsRequired = true;
+    this.showAddForm = true;
+  }
+
+  editTool(roleTool: RoleTool): void {
+    this.editingTool = roleTool;
+    this.newToolName = roleTool.tool.toolName;
+    this.newToolCategory = roleTool.tool.category;
+    this.newToolLevel = roleTool.tool.levelNumber;
+    this.newToolDescription = roleTool.tool.description;
+    this.newToolKeywords = roleTool.tool.keywords.join(', ');
+    this.newToolHours = roleTool.tool.estimatedHours;
+    this.newToolIsRequired = roleTool.isRequired;
+    this.showAddForm = true;
+  }
+
+  closeAddForm(): void {
+    this.showAddForm = false;
+    this.editingTool = null;
+  }
+
+  saveTool(): void {
+    if (!this.newToolName || !this.newToolCategory) return;
+
+    const levelConfig = TOOL_LEVELS.find(l => l.value === this.newToolLevel);
+    const keywords = this.newToolKeywords.split(',').map(k => k.trim()).filter(k => k);
+
+    if (this.editingTool) {
+      // Update existing
+      this.editingTool.tool.toolName = this.newToolName;
+      this.editingTool.tool.category = this.newToolCategory;
+      this.editingTool.tool.levelNumber = this.newToolLevel;
+      this.editingTool.tool.level = levelConfig?.label || `Level ${this.newToolLevel}`;
+      this.editingTool.tool.description = this.newToolDescription;
+      this.editingTool.tool.keywords = keywords;
+      this.editingTool.tool.estimatedHours = this.newToolHours;
+      this.editingTool.requiredLevel = levelConfig?.label || `Level ${this.newToolLevel}`;
+      this.editingTool.requiredLevelNumber = this.newToolLevel;
+      this.editingTool.isRequired = this.newToolIsRequired;
+    } else {
+      // Create new
+      const newRoleTool: RoleTool = {
+        roleToolId: Date.now(),
+        roleId: 0,
+        roleName: this.selectedRole,
+        toolId: Date.now(),
+        tool: {
+          toolId: Date.now(),
+          toolName: this.newToolName,
+          category: this.newToolCategory,
+          level: levelConfig?.label || `Level ${this.newToolLevel}`,
+          levelNumber: this.newToolLevel,
+          description: this.newToolDescription,
+          keywords: keywords,
+          estimatedHours: this.newToolHours
+        },
+        requiredLevel: levelConfig?.label || `Level ${this.newToolLevel}`,
+        requiredLevelNumber: this.newToolLevel,
+        isRequired: this.newToolIsRequired,
+        priority: this.roleTools.length + 1
+      };
+      this.roleTools.push(newRoleTool);
+    }
+
+    this.saveRoleTools();
+    this.closeAddForm();
+  }
+
+  // ============================================
+  // GENERATION JOBS
+  // ============================================
+
+  clearCompletedJobs(): void {
+    this.generationJobs = this.generationJobs.filter(j => j.status !== 'completed');
+    this.saveGenerationJobs();
+  }
+
+  getJobStatusClass(status: string): string {
+    switch (status) {
+      case 'completed': return 'status-completed';
+      case 'processing': return 'status-processing';
+      case 'failed': return 'status-failed';
+      default: return 'status-pending';
+    }
   }
 }
