@@ -30,6 +30,9 @@ export class CourseService {
     return this.http.post(`${apiUrl}/Course/AddUpdateCourse`, data);
   }
   
+  updateCourseUrl(courseId: number, url: string): Observable<any> {
+    return this.http.post(`${apiUrl}/Course/UpdateCourseUrl`, { courseId, url });
+  }
   updateCourse(data: any): Observable<any> {
     return this.http.post(`${apiUrl}/Course/UpdateCourse`, data, { headers: this.headers });
   }

@@ -1517,6 +1517,7 @@
 
 /* Primer Modal Header */
 .primer-modal-header {
+  color: white;
   background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%);
 }
 
@@ -1614,4 +1615,180 @@
 
 .primer-type-desc {
   color: #9ca3af !important;
+}
+
+/* Primer Modal Header Text Fix */
+.primer-modal-header h4 {
+  color: white !important;
+}
+
+/* Prevent page flashing during generation */
+.primer-progress .progress-content {
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.primer-progress h4 {
+  color: #e5e7eb;
+  margin-bottom: 0.5rem;
+}
+
+.primer-progress p {
+  color: #9ca3af;
+  margin-bottom: 1rem;
+}
+
+.progress-percent {
+  color: #6366f1;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+/* ============================================
+   PRIMER MODAL FIXES
+   ============================================ */
+
+/* Fix: White text on dark header */
+.primer-modal-header h4 {
+  color: white !important;
+}
+.primer-modal-header .btn-close {
+  color: white;
+  background: rgba(255,255,255,0.1);
+}
+.primer-modal-header .btn-close:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+/* Fix: Prevent modal content from jumping/flashing */
+.modal-primer .modal-body {
+  min-height: 400px;
+}
+
+.primer-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  background: #1f2937;
+  border-radius: 0.5rem;
+  margin: 1rem;
+}
+
+.primer-progress .progress-content {
+  text-align: center;
+  width: 100%;
+  padding: 2rem;
+}
+
+.primer-progress h4 {
+  color: #f3f4f6 !important;
+  font-size: 1.25rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.primer-progress p {
+  color: #9ca3af;
+  margin-bottom: 1.5rem;
+}
+
+.primer-progress .progress-percent {
+  display: block;
+  color: #818cf8;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 1rem;
+}
+
+/* Smoother spinner */
+.progress-spinner {
+  width: 64px;
+  height: 64px;
+  border: 4px solid rgba(99, 102, 241, 0.2);
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Generating Overlay */
+.generating-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.95);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+}
+
+.generating-spinner {
+  width: 60px;
+  height: 60px;
+  border: 4px solid #e5e7eb;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.generating-content {
+  text-align: center;
+}
+
+.generating-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 0.5rem 0;
+}
+
+.generating-step {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0 0 1rem 0;
+}
+
+.generating-progress-bar {
+  width: 300px;
+  height: 8px;
+  background-color: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.generating-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.btn-cancel-generating {
+  margin-top: 1.5rem;
+  padding: 0.625rem 2rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  background-color: white;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel-generating:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
 }

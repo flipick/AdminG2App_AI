@@ -1,11 +1,4 @@
 <div class="tools-tab-container">
-  <!-- Header -->
-  <div class="tools-header">
-    <div class="tools-title">
-      <h3>🛠️ Tools & Technologies</h3>
-      <p class="tools-subtitle">Manage tools with Primers (quick intros) and Mastery Tracks (deep learning)</p>
-    </div>
-  </div>
 
   <!-- Filters -->
   <div class="tools-filters">
@@ -169,7 +162,6 @@
                 <div class="suggestion-category-bar" [ngClass]="'category-' + getCategorySlug(suggestion.category)"></div>
                 
                 <div class="suggestion-card-body">
-                  <!-- Header -->
                   <div class="suggestion-header">
                     <div class="suggestion-icon">{{ getCategoryIcon(suggestion.category) }}</div>
                     <div class="suggestion-title-area">
@@ -231,37 +223,6 @@
                   <button class="btn-add-suggestion" (click)="addSuggestedTool(suggestion)">
                     <span class="btn-icon">✓</span> Add Tool
                   </button>
-                </div>
-              </div>
-            }
-          </div>
-        </div>
-      }
-
-      <!-- Generation Jobs Status -->
-      @if(generationJobs.length > 0) {
-        <div class="generation-jobs-panel">
-          <div class="jobs-header">
-            <h4>🎬 Primer Generation Queue</h4>
-            <button class="btn-clear-jobs" (click)="clearCompletedJobs()">Clear Completed</button>
-          </div>
-          <div class="jobs-list">
-            @for(job of generationJobs; track $index) {
-              <div class="job-item" [ngClass]="getJobStatusClass(job.status)">
-                <div class="job-info">
-                  <span class="job-tool">{{ job.toolName }}</span>
-                  <span class="job-primer">{{ job.primerTitle }}</span>
-                </div>
-                @if(job.status === 'processing') {
-                  <div class="job-progress">
-                    <div class="progress-bar">
-                      <div class="progress-fill" [style.width.%]="job.progress"></div>
-                    </div>
-                    <span class="progress-text">{{ job.progress }}% - {{ job.currentStep }}</span>
-                  </div>
-                }
-                <div class="job-status">
-                  <span class="status-badge" [ngClass]="getJobStatusClass(job.status)">{{ job.status }}</span>
                 </div>
               </div>
             }
@@ -569,6 +530,22 @@
   }
 
   <!-- Create Primer Modal -->
+
+  <!-- Generating Overlay -->
+  @if(isGeneratingPrimer) {
+    <div class="generating-overlay">
+      <div class="generating-spinner"></div>
+      <div class="generating-content">
+        <p class="generating-title">🎬 Generating Primer Video</p>
+        <p class="generating-step">{{ primerStep }}</p>
+        <div class="generating-progress-bar">
+          <div class="generating-progress-fill" [style.width.%]="primerProgress"></div>
+        </div>
+        <p class="generating-step" style="margin-top: 1rem">{{ primerProgress }}% complete</p>
+        <button class="btn-cancel-generating" (click)="closePrimerModal()">Cancel</button>
+      </div>
+    </div>
+  }
   @if(showPrimerModal) {
     <div class="modal-overlay" (click)="closePrimerModal()">
       <div class="modal-content modal-primer" (click)="$event.stopPropagation()">

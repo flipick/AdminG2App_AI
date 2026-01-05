@@ -1,5 +1,6 @@
+import { CourseService } from '../../../services/course-service';
 import { VideoStudioService } from '../../../core/services/video-studio.service';
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { environment } from '../../../../environments/environment';
@@ -627,12 +628,15 @@ export class ToolsTab implements OnInit {
   
   // Generation Jobs
   generationJobs: VideoStudioJob[] = [];
+  private pollIntervalId: any = null;
 
   constructor(
+    private courseService: CourseService,
     private videoStudioService: VideoStudioService,
     private skillService: SkillService,
     private tenantService: TenantService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private ngZone: NgZone
   ) {
     this.apiUrl = environment.claudeApiUrl || 'https://api.anthropic.com/v1/messages';
     this.apiKey = environment.claudeApiKey || '';
@@ -647,6 +651,40 @@ export class ToolsTab implements OnInit {
   }
 
   // ============================================
+
+  private migrateOldPrimerKeys(): void {
+    if (!this.selectedTenantId) return;
+    
+    const migrated = localStorage.getItem(`primers_migrated_${this.selectedTenantId}`);
+    if (migrated) return;
+    
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('primers_') && !key.startsWith(`primers_${this.selectedTenantId}_`)) {
+        const toolName = key.replace('primers_', '');
+        if (!toolName.includes('_')) {
+          const newKey = `primers_${this.selectedTenantId}_${toolName}`;
+          const data = localStorage.getItem(key);
+          if (data && !localStorage.getItem(newKey)) {
+            localStorage.setItem(newKey, data);
+          }
+        }
+      }
+      if (key.startsWith('mastery_') && !key.startsWith(`mastery_${this.selectedTenantId}_`)) {
+        const toolName = key.replace('mastery_', '');
+        if (!toolName.includes('_')) {
+          const newKey = `mastery_${this.selectedTenantId}_${toolName}`;
+          const data = localStorage.getItem(key);
+          if (data && !localStorage.getItem(newKey)) {
+            localStorage.setItem(newKey, data);
+          }
+        }
+      }
+    });
+    
+    localStorage.setItem(`primers_migrated_${this.selectedTenantId}`, 'true');
+    console.log('Migrated old primer/mastery keys to tenant-specific format');
+  }
+
   // DATA LOADING
   // ============================================
 
@@ -798,14 +836,14 @@ export class ToolsTab implements OnInit {
       const toolName = rt.tool.toolName;
       
       // Load primers
-      const primersKey = `primers_${toolName}`;
+      const primersKey = `primers_${this.selectedTenantId}_${toolName}`;
       const storedPrimers = localStorage.getItem(primersKey);
       if (storedPrimers) {
         this.toolPrimers.set(toolName, JSON.parse(storedPrimers));
       }
       
       // Load mastery tracks
-      const masteryKey = `mastery_${toolName}`;
+      const masteryKey = `mastery_${this.selectedTenantId}_${toolName}`;
       const storedMastery = localStorage.getItem(masteryKey);
       if (storedMastery) {
         this.toolMasteryTracks.set(toolName, JSON.parse(storedMastery));
@@ -1153,11 +1191,12 @@ Return ONLY the JSON array, no markdown or explanation.`;
     this.primerToolName = toolName;
     this.primerType = suggestion?.recommendedPrimerType || 'concept_primer';
     this.primerTitle = `${toolName} Primer`;
-    this.primerTopics = suggestion?.primerTopics?.join('\n') || '';
+    this.primerTopics = suggestion?.primerTopics?.join('\n') || `What is ${toolName}?\nKey concepts and features\nBest practices\nGetting started`;
     this.showPrimerModal = true;
   }
 
   closePrimerModal(): void {
+    this.stopPolling();
     this.showPrimerModal = false;
     this.isGeneratingPrimer = false;
     this.primerProgress = 0;
@@ -1176,66 +1215,204 @@ Return ONLY the JSON array, no markdown or explanation.`;
     this.primerStep = 'Initializing...';
 
     const config = this.getPrimerTypeConfig(this.primerType);
-    
-    // Create job
-    const job: VideoStudioJob = {
-      jobId: `primer_${Date.now()}`,
+    const topics = this.primerTopics.split('\n').filter((t: string) => t.trim());
+
+    // Call Video Studio API
+    const request = {
       toolName: this.primerToolName,
       primerTitle: this.primerTitle,
-      primerType: this.primerType,
-      status: 'processing',
-      progress: 0,
-      currentStep: 'Starting generation...',
-      createdAt: new Date()
+      topics: topics,
+      context: `Role: ${this.selectedRole || 'General'}. Type: ${this.primerType}. Category: ${this.primerToolName || 'Technology'}`,
+      audience: 'elearning' as const,
+      estimatedDuration: config.duration.default
     };
-    
-    this.generationJobs.unshift(job);
-    this.saveGenerationJobs();
 
-    // Simulate generation (replace with actual Video Studio API)
-    const steps = [
-      { progress: 10, step: 'Analyzing content...' },
-      { progress: 25, step: 'Generating script...' },
-      { progress: 45, step: 'Creating scenes...' },
-      { progress: 65, step: 'Generating visuals...' },
-      { progress: 80, step: 'Adding narration...' },
-      { progress: 95, step: 'Finalizing...' },
-      { progress: 100, step: 'Complete!' }
-    ];
+    this.videoStudioService.createPrimerVideo(request).subscribe({
+      next: (response) => {
+        if (response.success) {
+          const jobId = response.result.jobId;
+          this.primerStep = 'Video generation started...';
+          this.primerProgress = 5;
 
-    for (const step of steps) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      this.primerProgress = step.progress;
-      this.primerStep = step.step;
-      job.progress = step.progress;
-      job.currentStep = step.step;
-      this.cdr.detectChanges();
+          // Create job record
+          const job: VideoStudioJob = {
+            jobId: jobId,
+            toolName: this.primerToolName,
+            primerTitle: this.primerTitle,
+            primerType: this.primerType,
+            status: 'processing',
+            progress: 5,
+            currentStep: 'Starting generation...',
+            createdAt: new Date()
+          };
+          this.generationJobs.unshift(job);
+          this.saveGenerationJobs();
+
+          // Start polling for status
+          this.pollJobStatus(jobId);
+        }
+      },
+      error: (error) => {
+        console.error('Video Studio API error:', error);
+        this.primerStep = 'Failed to start generation';
+        this.isGeneratingPrimer = false;
+        this.saveMessage = '✗ Failed to generate primer';
+        setTimeout(() => this.saveMessage = '', 5000);
+      }
+    });
+  }
+
+  private pollJobStatus(jobId: string): void {
+    if (this.pollIntervalId) {
+      clearInterval(this.pollIntervalId);
+      this.pollIntervalId = null;
     }
 
-    // Create primer record
+    this.pollIntervalId = setInterval(() => {
+      this.videoStudioService.getStatus(jobId).subscribe({
+        next: (response) => {
+          if (response.success) {
+            const result = response.result;
+            this.primerProgress = result.progress;
+            this.primerStep = result.currentStep;
+
+            const job = this.generationJobs.find((j: VideoStudioJob) => j.jobId === jobId);
+            if (job) {
+              job.progress = result.progress;
+              job.currentStep = result.currentStep;
+              job.status = result.status as 'pending' | 'processing' | 'completed' | 'failed';
+            }
+
+            if (result.status === 'completed') {
+              this.stopPolling();
+              this.onPrimerCompleted(jobId, result.output);
+            } else if (result.status === 'failed') {
+              this.stopPolling();
+              this.primerStep = result.error || 'Generation failed';
+              this.isGeneratingPrimer = false;
+              if (job) job.status = 'failed';
+              this.saveGenerationJobs();
+            }
+          }
+        },
+        error: (err) => {
+          console.error('Polling error:', err);
+          this.stopPolling();
+        }
+      });
+    }, 5000);
+  }
+
+  private stopPolling(): void {
+    if (this.pollIntervalId) {
+      clearInterval(this.pollIntervalId);
+      this.pollIntervalId = null;
+    }
+  }
+
+  private onPrimerCompleted(jobId: string, output: any): void {
+    const config = this.getPrimerTypeConfig(this.primerType);
+
+    // Create primer record with thumbnail
     const newPrimer: Primer = {
       primerId: Date.now(),
       toolName: this.primerToolName,
       title: this.primerTitle,
       type: this.primerType,
-      duration: config.duration.default,
+      duration: output?.duration || config.duration.default,
       status: 'ready',
-      videoStudioJobId: job.jobId,
+      videoStudioJobId: jobId,
+      thumbnailUrl: output?.thumbnailUrl,
+      scormPackageUrl: output?.shareLink?.shareUrl,
       createdAt: new Date()
     };
 
-    // Save primer
+    // Save primer locally
     const existing = this.toolPrimers.get(this.primerToolName) || [];
     existing.push(newPrimer);
     this.toolPrimers.set(this.primerToolName, existing);
-    localStorage.setItem(`primers_${this.primerToolName}`, JSON.stringify(existing));
+    localStorage.setItem(`primers_${this.selectedTenantId}_${this.primerToolName}`, JSON.stringify(existing));
 
-    job.status = 'completed';
+    // Update job
+    const job = this.generationJobs.find((j: VideoStudioJob) => j.jobId === jobId);
+    if (job) {
+      job.status = 'completed';
+      job.progress = 100;
+      job.currentStep = 'Complete!';
+    }
     this.saveGenerationJobs();
 
+    // AUTO-CREATE COURSE in LMS
+    this.createCourseFromPrimer(output);
+
+    this.isGeneratingPrimer = false;
     this.closePrimerModal();
-    this.saveMessage = '✓ Primer created successfully!';
-    setTimeout(() => this.saveMessage = '', 3000);
+    this.saveMessage = '✓ Primer video created and published as course!';
+    setTimeout(() => this.saveMessage = '', 5000);
+  }
+
+  private createCourseFromPrimer(output: any): void {
+    const videoUrl = output?.shareLink?.shareUrl || output?.shareLink?.embedUrl || '';
+    const courseData = {
+      courseId: 0,
+      courseName: this.primerTitle,
+      description: `AI-generated primer for ${this.primerToolName}. ${output?.description || ''}`,
+      duration: `${Math.ceil(output?.duration || 5)} min`,
+      categoryId: 1,
+      difficultyLevelId: 1,
+      courseType: 'URL',
+      courseTypeUrl: '',
+      tags: `${this.primerToolName},primer,${this.primerType},ai-generated,${this.selectedRole || ''}`.toLowerCase(),
+      tenantScope: 'selected',
+      enrollmentId: 0,
+      status: 'Published',
+      isTrackLearnerProgess: true,
+      isTrackTimeSpent: true,
+      isTrackAssessmentScores: false,
+      certificationSetting: '',
+      courseTenants: [{ tenantId: parseInt(this.selectedTenantId) || 1 }],
+      thumbnailUrl: output?.thumbnailUrl || '',
+      thumbnailType: 'url',
+      isPackage: false,
+      isTableOfContent: false,
+      curriculumSectionId: 0,
+      subscriptionMonth: 0
+    };
+
+    const formData = new FormData();
+    formData.append('ThumbnailFile', '');
+    formData.append('CourseJson', JSON.stringify(courseData));
+
+    this.courseService.addUpdateCourse(formData).subscribe({
+      next: (res: any) => {
+        if (res.success && res.result) {
+          const courseId = res.result;
+          console.log('✅ Course created:', courseId);
+          
+          // Now update the course URL using the dedicated API
+          this.courseService.updateCourseUrl(courseId, videoUrl).subscribe({
+            next: (urlRes: any) => {
+              if (urlRes.success) {
+                console.log('✅ Course URL updated');
+                this.saveMessage = `✓ Course "${this.primerTitle}" published with video!`;
+              } else {
+                console.error('URL update failed:', urlRes.message);
+                this.saveMessage = `✓ Course created but URL update failed`;
+              }
+            },
+            error: (err: any) => {
+              console.error('Error updating course URL:', err);
+              this.saveMessage = `✓ Course created but URL update failed`;
+            }
+          });
+        } else {
+          console.error('Course creation failed:', res.message);
+        }
+      },
+      error: (err: any) => {
+        console.error('Error creating course:', err);
+      }
+    });
   }
 
   // ============================================
@@ -1286,7 +1463,7 @@ Return ONLY the JSON array, no markdown or explanation.`;
     const existing = this.toolMasteryTracks.get(this.masteryToolName) || [];
     existing.push(newTrack);
     this.toolMasteryTracks.set(this.masteryToolName, existing);
-    localStorage.setItem(`mastery_${this.masteryToolName}`, JSON.stringify(existing));
+    localStorage.setItem(`mastery_${this.selectedTenantId}_${this.masteryToolName}`, JSON.stringify(existing));
 
     this.closeMasteryModal();
     this.saveMessage = '✓ Mastery track added!';
@@ -1308,7 +1485,7 @@ Return ONLY the JSON array, no markdown or explanation.`;
     const primers = this.toolPrimers.get(toolName) || [];
     const filtered = primers.filter(p => p.primerId !== primerId);
     this.toolPrimers.set(toolName, filtered);
-    localStorage.setItem(`primers_${toolName}`, JSON.stringify(filtered));
+    localStorage.setItem(`primers_${this.selectedTenantId}_${toolName}`, JSON.stringify(filtered));
     this.saveMessage = '✓ Primer removed';
     setTimeout(() => this.saveMessage = '', 2000);
   }
@@ -1317,7 +1494,7 @@ Return ONLY the JSON array, no markdown or explanation.`;
     const tracks = this.toolMasteryTracks.get(toolName) || [];
     const filtered = tracks.filter(t => t.trackId !== trackId);
     this.toolMasteryTracks.set(toolName, filtered);
-    localStorage.setItem(`mastery_${toolName}`, JSON.stringify(filtered));
+    localStorage.setItem(`mastery_${this.selectedTenantId}_${toolName}`, JSON.stringify(filtered));
     this.saveMessage = '✓ Mastery track removed';
     setTimeout(() => this.saveMessage = '', 2000);
   }

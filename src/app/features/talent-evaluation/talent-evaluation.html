@@ -121,7 +121,7 @@
           <div class="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-200">
             <div>
               <h3 class="text-lg font-semibold text-gray-800">Select Skill Gaps</h3>
-              <p class="text-sm text-gray-500">Check the skills where the employee needs improvement or training</p>
+              <p class="text-sm text-gray-500">Check the areas where the employee needs improvement or training</p>
             </div>
             <div class="flex items-center gap-2">
               <button (click)="selectAllGaps()" class="btn-outline-sm">
@@ -132,6 +132,88 @@
               </button>
             </div>
           </div>
+
+          <!-- ============================================
+               TOOL COURSES SECTION (PRIMERS & MASTERY)
+               This section appears FIRST before skills
+               ============================================ -->
+          @if (toolCourses.length > 0) {
+            <div class="mb-6">
+              <h4 class="flex items-center gap-2 text-base font-semibold text-gray-700 mb-3">
+                <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Tool Courses (Primers & Mastery Tracks)
+              </h4>
+              
+              <!-- Primers Section -->
+              @if (getPrimers().length > 0) {
+                <div class="mb-4">
+                  <h5 class="text-sm font-medium text-gray-600 mb-2 flex items-center gap-2">
+                    <span class="tool-indicator tool-indicator-primer"></span>
+                    Primers (Quick Introductions - 5-15 min)
+                  </h5>
+                  <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    @for (course of getPrimers(); track course.courseId) {
+                      <div class="tool-course-card" [class.tool-course-card-selected]="course.isGap">
+                        <label class="tool-course-label">
+                          <input 
+                            type="checkbox" 
+                            [checked]="course.isGap"
+                            (change)="toggleToolCourseGap(course)"
+                            class="skill-checkbox" />
+                          <div class="tool-course-content">
+                            <p class="tool-course-name">{{ course.courseName }}</p>
+                            <p class="tool-course-meta">
+                              <span class="tool-badge tool-badge-primer">Primer</span>
+                              <span class="tool-name-tag">{{ course.toolName }}</span>
+                              <span>{{ course.duration }} min</span>
+                            </p>
+                          </div>
+                        </label>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+              
+              <!-- Mastery Tracks Section -->
+              @if (getMasteryTracks().length > 0) {
+                <div>
+                  <h5 class="text-sm font-medium text-gray-600 mb-2 flex items-center gap-2">
+                    <span class="tool-indicator tool-indicator-mastery"></span>
+                    Mastery Tracks (Deep Learning - Hours)
+                  </h5>
+                  <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    @for (course of getMasteryTracks(); track course.courseId) {
+                      <div class="tool-course-card tool-course-card-mastery" [class.tool-course-card-selected]="course.isGap">
+                        <label class="tool-course-label">
+                          <input 
+                            type="checkbox" 
+                            [checked]="course.isGap"
+                            (change)="toggleToolCourseGap(course)"
+                            class="skill-checkbox" />
+                          <div class="tool-course-content">
+                            <p class="tool-course-name">{{ course.courseName }}</p>
+                            <p class="tool-course-meta">
+                              <span class="tool-badge tool-badge-mastery">Mastery</span>
+                              <span class="tool-name-tag">{{ course.toolName }}</span>
+                              @if (course.source) {
+                                <span class="tool-source">{{ course.source }}</span>
+                              }
+                              @if (course.level) {
+                                <span>{{ course.level }}</span>
+                              }
+                            </p>
+                          </div>
+                        </label>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
 
           <!-- Core Skills Section -->
           @if (roleSkills.length > 0) {
@@ -213,18 +295,18 @@
           }
 
           <!-- Empty State -->
-          @if (roleSkills.length === 0 && criticalWorkFunctions.length === 0) {
+          @if (roleSkills.length === 0 && criticalWorkFunctions.length === 0 && toolCourses.length === 0) {
             <div class="text-center py-8">
               <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <p class="text-gray-500">No skills defined for this role yet.</p>
-              <p class="text-sm text-gray-400 mt-1">Go to Skills Framework → Manage Skills to configure skills.</p>
+              <p class="text-gray-500">No skills or tools defined for this role yet.</p>
+              <p class="text-sm text-gray-400 mt-1">Go to Skills Framework → Tools or Manage Skills to configure.</p>
             </div>
           }
 
           <!-- Save Section -->
-          @if (roleSkills.length > 0 || criticalWorkFunctions.length > 0) {
+          @if (roleSkills.length > 0 || criticalWorkFunctions.length > 0 || toolCourses.length > 0) {
             <div class="mt-6 pt-4 border-t border-gray-200">
               <div class="flex flex-wrap items-center justify-between gap-4">
                 <div>

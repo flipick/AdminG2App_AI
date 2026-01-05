@@ -39,6 +39,20 @@ interface KeyTask {
   isGap: boolean;
 }
 
+// Tool Course interface (Primers & Mastery Tracks)
+interface ToolCourse {
+  courseId: number;
+  courseName: string;
+  toolName: string;
+  courseType: 'primer' | 'mastery';
+  duration: number | string;
+  source?: string;       // For mastery: LinkedIn, Coursera, etc.
+  level?: string;        // Beginner, Intermediate, Advanced
+  thumbnailUrl?: string;
+  courseUrl?: string;
+  isGap: boolean;
+}
+
 @Component({
   selector: 'app-evaluation',
   standalone: true,
@@ -72,6 +86,9 @@ export class TalentEvaluation implements OnInit {
   criticalWorkFunctions: CriticalWorkFunction[] = [];
   isLoadingSkills: boolean = false;
   noRoleAssigned: boolean = false;
+  
+  // Tool Courses (Primers & Mastery Tracks) - NEW
+  toolCourses: ToolCourse[] = [];
   
   // Skill Gap Selection
   showSkillGapSection: boolean = false;
@@ -190,6 +207,7 @@ export class TalentEvaluation implements OnInit {
     this.employeeRole = null;
     this.roleSkills = [];
     this.criticalWorkFunctions = [];
+    this.toolCourses = [];
     this.noRoleAssigned = false;
     this.saveMessage = '';
   }
@@ -264,6 +282,9 @@ export class TalentEvaluation implements OnInit {
 
             // Now load the skills for this role
             this.loadSkillsForRole(this.employeeRole);
+            
+            // Load tool courses (Primers & Mastery Tracks) for this role
+            this.loadToolCoursesForRole(this.employeeRole.jobRoleName);
           } else {
             this.isLoadingSkills = false;
             this.noRoleAssigned = true;
@@ -281,6 +302,171 @@ export class TalentEvaluation implements OnInit {
       }
     });
   }
+
+  // ============================================
+  // TOOL COURSES SECTION (NEW)
+  // ============================================
+
+  /**
+   * Load Tool Courses (Primers & Mastery Tracks) for the role
+   */
+  loadToolCoursesForRole(roleName: string): void {
+    this.toolCourses = [];
+    
+    // Load from localStorage (stored by tools-tab component)
+    const storageKey = `roleTools_${this.selectedTenantId}_${roleName}`;
+    const savedTools = localStorage.getItem(storageKey);
+    
+    if (savedTools) {
+      try {
+        const roleTools = JSON.parse(savedTools);
+        console.log('Found role tools:', roleTools);
+        
+        // For each tool, load its primers and mastery tracks
+        roleTools.forEach((roleTool: any) => {
+          const toolName = roleTool.tool?.toolName || roleTool.toolName;
+          if (toolName) {
+            this.loadPrimersForTool(toolName);
+            this.loadMasteryTracksForTool(toolName);
+          }
+        });
+      } catch (e) {
+        console.error('Error parsing role tools:', e);
+      }
+    }
+    
+    // Also check for any generic tools saved
+    
+  }
+
+  /**
+   * Load Primers for a specific tool
+   */
+  loadPrimersForTool(toolName: string): void {
+    const primersKey = `primers_${this.selectedTenantId}_${toolName}`;
+    const savedPrimers = localStorage.getItem(primersKey);
+    
+    if (savedPrimers) {
+      try {
+        const primers = JSON.parse(savedPrimers);
+        primers.forEach((primer: any) => {
+          // Check if not already added
+          const exists = this.toolCourses.some(c => c.courseId === primer.primerId);
+          if (!exists) {
+            this.toolCourses.push({
+              courseId: primer.primerId || Date.now(),
+              courseName: primer.title || `${toolName} Primer`,
+              toolName: toolName,
+              courseType: 'primer',
+              duration: primer.duration || 5,
+              thumbnailUrl: primer.thumbnailUrl,
+              courseUrl: primer.scormPackageUrl,
+              isGap: false
+            });
+          }
+        });
+      } catch (e) {
+        console.error('Error parsing primers:', e);
+      }
+    }
+  }
+
+  /**
+   * Load Mastery Tracks for a specific tool
+   */
+  loadMasteryTracksForTool(toolName: string): void {
+    const masteryKey = `mastery_${this.selectedTenantId}_${toolName}`;
+    const savedMastery = localStorage.getItem(masteryKey);
+    
+    if (savedMastery) {
+      try {
+        const tracks = JSON.parse(savedMastery);
+        tracks.forEach((track: any) => {
+          // Check if not already added
+          const exists = this.toolCourses.some(c => c.courseId === track.trackId);
+          if (!exists) {
+            this.toolCourses.push({
+              courseId: track.trackId || Date.now(),
+              courseName: track.title || `${toolName} Mastery`,
+              toolName: toolName,
+              courseType: 'mastery',
+              duration: track.duration || 60,
+              source: track.provider || track.source || 'External',
+              level: track.level || 'Intermediate',
+              courseUrl: track.sourceUrl,
+              isGap: false
+            });
+          }
+        });
+      } catch (e) {
+        console.error('Error parsing mastery tracks:', e);
+      }
+    }
+  }
+
+  /**
+   * Load any generic tool courses
+   */
+  loadGenericToolCourses(): void {
+    // Check for completed primer videos stored globally
+    const completedKey = 'completed_primer_videos';
+    const completed = localStorage.getItem(completedKey);
+    
+    if (completed) {
+      try {
+        const videos = JSON.parse(completed);
+        videos.forEach((video: any) => {
+          // Check if not already added
+          const exists = this.toolCourses.some(
+            c => c.courseName === video.primerTitle || c.courseUrl === video.shareUrl
+          );
+          
+          if (!exists) {
+            this.toolCourses.push({
+              courseId: video.jobId || Date.now(),
+              courseName: video.primerTitle || 'Tool Primer',
+              toolName: video.toolName || 'General',
+              courseType: 'primer',
+              duration: video.duration || 5,
+              thumbnailUrl: video.thumbnailUrl,
+              courseUrl: video.shareUrl || video.embedUrl,
+              isGap: false
+            });
+          }
+        });
+      } catch (e) {
+        console.error('Error parsing completed videos:', e);
+      }
+    }
+    
+    console.log('Loaded tool courses:', this.toolCourses);
+  }
+
+  /**
+   * Toggle tool course gap selection
+   */
+  toggleToolCourseGap(course: ToolCourse): void {
+    course.isGap = !course.isGap;
+    this.saveMessage = '';
+  }
+
+  /**
+   * Get primers from toolCourses
+   */
+  getPrimers(): ToolCourse[] {
+    return this.toolCourses.filter(c => c.courseType === 'primer');
+  }
+
+  /**
+   * Get mastery tracks from toolCourses
+   */
+  getMasteryTracks(): ToolCourse[] {
+    return this.toolCourses.filter(c => c.courseType === 'mastery');
+  }
+
+  // ============================================
+  // SKILLS LOADING
+  // ============================================
 
   /**
    * Load detailed skills from SSF data
@@ -442,9 +628,6 @@ export class TalentEvaluation implements OnInit {
    * Parse response from GetCoreSkillAndTDSkillByRoles API
    */
   parseGapAnalysisResponse(data: any): void {
-    // Don't clear criticalWorkFunctions if already loaded from getKeyTasks
-    // this.criticalWorkFunctions = [];
-    
     // Clear and reload skills
     this.roleSkills = [];
 
@@ -452,7 +635,6 @@ export class TalentEvaluation implements OnInit {
 
     // Parse Core Skills
     if (data.coreSkills && Array.isArray(data.coreSkills)) {
-      // Log first skill to see field names
       if (data.coreSkills.length > 0) {
         console.log('First core skill object:', data.coreSkills[0]);
         console.log('Core skill keys:', Object.keys(data.coreSkills[0]));
@@ -476,7 +658,6 @@ export class TalentEvaluation implements OnInit {
 
     // Parse TDC Skills
     if (data.tdcSkills && Array.isArray(data.tdcSkills)) {
-      // Log first skill to see field names
       if (data.tdcSkills.length > 0) {
         console.log('First TDC skill object:', data.tdcSkills[0]);
         console.log('TDC skill keys:', Object.keys(data.tdcSkills[0]));
@@ -548,54 +729,7 @@ export class TalentEvaluation implements OnInit {
       });
     }
 
-    // Parse Critical Work Functions with Key Tasks
-    if (Array.isArray(cwfData) && cwfData.length > 0) {
-      cwfData.forEach((cwf: any, cwfIndex: number) => {
-        const keyTasks: KeyTask[] = [];
-        
-        const tasks = cwf.keyTasks || cwf.KeyTasks || cwf.tasks || cwf.Tasks || [];
-        
-        if (Array.isArray(tasks)) {
-          tasks.forEach((task: any, taskIndex: number) => {
-            const taskName = typeof task === 'string' ? task : (task.taskName || task.name || task.task || 'Unknown Task');
-            keyTasks.push({
-              taskId: task.taskId || task.id || (cwfIndex * 100 + taskIndex),
-              taskName: taskName,
-              isGap: false
-            });
-          });
-        }
-
-        this.criticalWorkFunctions.push({
-          cwfId: cwf.cwfId || cwf.id || cwfIndex + 1,
-          cwfName: cwf.name || cwf.cwfName || cwf.functionName || cwf.title || `Critical Function ${cwfIndex + 1}`,
-          keyTasks: keyTasks
-        });
-      });
-    }
-
-    // If still no skills found, try to parse the data as a flat structure
-    if (this.roleSkills.length === 0 && this.criticalWorkFunctions.length === 0) {
-      console.log('No skills found with standard parsing, checking alternate structures...');
-      
-      // Check if data itself is an array of skills
-      if (Array.isArray(data)) {
-        data.forEach((item: any, index: number) => {
-          if (item.skillName || item.name) {
-            this.roleSkills.push({
-              skillId: item.skillId || index + 1,
-              skillName: item.skillName || item.name,
-              proficiencyLevel: item.proficiencyLevel || item.level || '3',
-              category: item.category || 'core',
-              isGap: false
-            });
-          }
-        });
-      }
-    }
-
-    console.log('Final parsed roleSkills:', this.roleSkills.length);
-    console.log('Final parsed criticalWorkFunctions:', this.criticalWorkFunctions.length);
+    console.log('Total parsed skills:', this.roleSkills.length);
   }
 
   /**
@@ -608,6 +742,10 @@ export class TalentEvaluation implements OnInit {
     // For now, gaps start as unchecked
     console.log('Loading saved skill gaps for employee:', this.selectedLearnerId);
   }
+
+  // ============================================
+  // GAP SELECTION METHODS
+  // ============================================
 
   /**
    * Toggle skill gap selection
@@ -626,20 +764,22 @@ export class TalentEvaluation implements OnInit {
   }
 
   /**
-   * Get count of selected skill gaps
+   * Get count of selected skill gaps (including tool courses)
    */
   getSelectedGapsCount(): number {
+    const toolGaps = this.toolCourses.filter(c => c.isGap).length;
     const skillGaps = this.roleSkills.filter(s => s.isGap).length;
     const taskGaps = this.criticalWorkFunctions.reduce((count, cwf) => {
       return count + cwf.keyTasks.filter(t => t.isGap).length;
     }, 0);
-    return skillGaps + taskGaps;
+    return toolGaps + skillGaps + taskGaps;
   }
 
   /**
    * Select all skills as gaps
    */
   selectAllGaps(): void {
+    this.toolCourses.forEach(c => c.isGap = true);
     this.roleSkills.forEach(s => s.isGap = true);
     this.criticalWorkFunctions.forEach(cwf => {
       cwf.keyTasks.forEach(t => t.isGap = true);
@@ -651,6 +791,7 @@ export class TalentEvaluation implements OnInit {
    * Clear all gap selections
    */
   clearAllGaps(): void {
+    this.toolCourses.forEach(c => c.isGap = false);
     this.roleSkills.forEach(s => s.isGap = false);
     this.criticalWorkFunctions.forEach(cwf => {
       cwf.keyTasks.forEach(t => t.isGap = false);
@@ -670,18 +811,30 @@ export class TalentEvaluation implements OnInit {
     this.isSavingGaps = true;
     this.saveMessage = '';
 
-    // Build payload with selected gaps
+    // Build payload with selected gaps (including tool courses)
     const payload = {
       learnerId: Number(this.selectedLearnerId),
       tenantId: this.selectedTenantId,
       roleId: this.employeeRole?.jobRoleId,
       roleName: this.employeeRole?.jobRoleName,
+      // Tool course gaps (Primers & Mastery Tracks) - NEW
+      toolCourseGaps: this.toolCourses.filter(c => c.isGap).map(c => ({
+        courseId: c.courseId,
+        courseName: c.courseName,
+        toolName: c.toolName,
+        courseType: c.courseType,
+        duration: c.duration,
+        source: c.source,
+        courseUrl: c.courseUrl
+      })),
+      // Skill gaps
       skillGaps: this.roleSkills.filter(s => s.isGap).map(s => ({
         skillId: s.skillId,
         skillName: s.skillName,
         category: s.category,
         requiredLevel: s.proficiencyLevel
       })),
+      // Task gaps
       taskGaps: this.criticalWorkFunctions.flatMap(cwf => 
         cwf.keyTasks.filter(t => t.isGap).map(t => ({
           cwfName: cwf.cwfName,
@@ -692,6 +845,10 @@ export class TalentEvaluation implements OnInit {
     };
 
     console.log('Saving skill gaps:', payload);
+
+    // Save to localStorage for learner dashboard to read
+    const gapKey = `learner_gaps_${this.selectedLearnerId}`;
+    localStorage.setItem(gapKey, JSON.stringify(payload));
 
     // TODO: Replace with actual API call
     // this.skillService.saveEmployeeSkillGaps(payload).subscribe(...)
@@ -704,7 +861,9 @@ export class TalentEvaluation implements OnInit {
     }, 1000);
   }
 
-  // ============== Existing Methods Below ==============
+  // ============================================
+  // CHAT & POPUP METHODS
+  // ============================================
 
   openChatPopup(html: string): void {
     this.selectedChatHtml = html;
@@ -738,6 +897,10 @@ export class TalentEvaluation implements OnInit {
     div.innerHTML = html;
     return div.textContent || div.innerText || '';
   }
+
+  // ============================================
+  // FILE UPLOAD & EVALUATION
+  // ============================================
 
   onFileSelected(event: any): void {
     if (event.target.files && event.target.files.length > 0) {
